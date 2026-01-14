@@ -4,6 +4,3 @@ lockfile = true
 
 [test]
 coverage = true
-
-[run]
-bun = "latest"
