@@ -1,0 +1,24 @@
+{
+  "name": "miro-workflows",
+  "version": "1.0.0",
+  "type": "module",
+  "module": "scripts/validate_setup.ts",
+  "description": "Collaborative Miro board creation and workflow management using MCP",
+  "packageManager": "bun@1.x",
+  "scripts": {
+    "validate": "bun run scripts/validate_setup.ts",
+    "dev": "bun run --watch scripts/validate_setup.ts"
+  },
+  "keywords": [
+    "miro",
+    "mcp",
+    "model-context-protocol",
+    "workflows",
+    "collaboration"
+  ],
+  "author": "TechTide",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
