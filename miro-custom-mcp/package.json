@@ -1,0 +1,22 @@
+{
+  "name": "miro-custom-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Custom Miro MCP Server with full API control",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun"
+  },
+  "keywords": ["mcp", "miro", "model-context-protocol"],
+  "author": "TechTide",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
