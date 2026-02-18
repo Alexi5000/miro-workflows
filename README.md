@@ -1,19 +1,55 @@
+<div align="center">
+
+<img src="assets/icon.png" alt="Miro Workflows Logo" width="120" />
+
 # Miro Workflows
 
-Collaborative Miro board creation and workflow management using the official Miro MCP (Model Context Protocol) server.
+### Turn Natural Language into Miro Boards
 
-## Overview
+**Describe what you want. AI creates the board. Full MCP integration with Cursor IDE — no drag-and-drop required.**
 
-This project enables two or more developers to collaborate on creating and managing Miro boards using AI assistance through Cursor IDE. By leveraging the official Miro MCP server, developers can generate diagrams, convert code to visual workflows, and create comprehensive project documentation directly from their development environment.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![Bun](https://img.shields.io/badge/Bun-Runtime-f9f1e1?logo=bun)](https://bun.sh)
+[![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-8b5cf6)](https://modelcontextprotocol.io)
+[![Miro](https://img.shields.io/badge/Miro-API%20v2-ffd02f)](https://miro.com)
+
+[Quick Start](#quick-start) · [Features](#features) · [Custom MCP Server](#custom-mcp-server) · [Prompt Library](#usage-examples) · [Docs](#documentation)
+
+---
+
+<img src="assets/cover.png" alt="Miro Workflows" width="100%" />
+
+</div>
+
+---
+
+## The Problem
+
+Creating Miro boards is manual, repetitive, and slow. Every sprint planning session, architecture review, or retro starts with the same drag-and-drop ritual. And when you need to turn code into a visual diagram, you're stuck switching between your IDE and a whiteboard tool.
+
+## The Solution
+
+Miro Workflows lets you **describe any board in natural language** and creates it instantly through the Model Context Protocol (MCP). It works directly inside Cursor IDE — no context switching, no drag-and-drop. Just describe what you need, and the AI builds it on your Miro board.
+
+The project includes both the **official Miro MCP** integration (zero setup) and a **custom MCP server** that gives you full REST API v2 control with precise positioning, custom colors, all item types, and professional layouts.
+
+> *"Create a sprint planning board with backlog, in-progress, review, and done columns. Add 5 sample user stories."*
+>
+> Done. Board created. Sticky notes placed. Columns organized.
+
+---
 
 ## Features
 
-- **Official Miro MCP Integration**: Connect to Miro's hosted MCP server (no local server needed)
-- **AI-Powered Board Creation**: Generate diagrams, workflows, and architecture visualizations using natural language
-- **Code ↔ Diagram Conversion**: Transform code into visual diagrams and vice versa
-- **Team Collaboration**: Multiple developers can work on the same Miro team boards
-- **Curated Prompts**: Pre-built prompt library for common use cases
-- **Validation Tools**: Built-in setup validation script
+- **Official Miro MCP Integration** — Connect to Miro's hosted MCP server (zero local setup)
+- **Custom MCP Server** — Full REST API v2 control with precise positioning, colors, and all item types
+- **AI-Powered Board Creation** — Generate diagrams, workflows, and architecture visualizations using natural language
+- **Code ↔ Diagram Conversion** — Transform code into visual diagrams and vice versa
+- **Team Collaboration** — Multiple developers working on the same Miro team boards simultaneously
+- **Curated Prompt Library** — Pre-built prompts for architecture diagrams, sprint planning, retros, SWOT analysis, and more
+- **Validation Tools** — Built-in setup validation script to verify your configuration
+- **Full Styling Control** — Custom colors, borders, fills, fonts, sizes, and precise (x, y) positioning
 
 ## Quick Start
 
@@ -252,8 +288,39 @@ MIT License - see LICENSE file for details
 - Check [docs/SETUP.md](docs/SETUP.md) for setup help
 - Review [docs/PROMPTS.md](docs/PROMPTS.md) for usage guidance
 
+## Custom MCP Server
+
+The official Miro MCP only creates basic flowchart diagrams. The included custom MCP server (`miro-custom-mcp/`) gives you full control:
+
+| Capability | Official MCP | Custom MCP Server |
+|---|---|---|
+| Basic flowcharts | Yes | Yes |
+| Precise (x, y) positioning | No | Yes |
+| Custom hex colors | No | Yes |
+| Sticky notes, shapes, frames, cards | Limited | Full |
+| Update and delete items | No | Yes |
+| Professional layouts (SWOT, dashboards) | No | Yes |
+| Full border/fill/font styling | No | Yes |
+
+See [miro-custom-mcp/README.md](./miro-custom-mcp/README.md) for setup instructions.
+
 ---
 
-**Built with ❤️ for visual collaboration**
+## Roadmap
 
-Using: [Bun](https://bun.sh/) • [Miro MCP](https://developers.miro.com/docs/miro-mcp) • [Cursor IDE](https://cursor.sh/)
+- [ ] Template marketplace for common board layouts
+- [ ] Automated board-to-code generation pipeline
+- [ ] Real-time board sync with Git commits
+- [ ] VS Code extension (beyond Cursor)
+- [ ] Board versioning and diff visualization
+- [ ] Slack/Discord bot for board creation
+
+---
+
+<div align="center">
+
+**Built by [Alex Cinovoj](https://github.com/Alexi5000) · [TechTide AI](https://github.com/Alexi5000)**
+
+*Stop dragging. Start describing.*
+
+</div>
