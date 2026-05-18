@@ -3,7 +3,7 @@
 // reference: miro-api.ts
 
 import { z } from "zod";
-import type { MiroApiClient } from "../miro-api.ts";
+import type { MiroApiClient } from "../miro-api.js";
 
 export const update_item_schema = z.object({
   board_id: z.string().describe("The Miro board ID"),

@@ -1,326 +1,174 @@
-<div align="center">
-
-<img src="assets/icon.png" alt="Miro Workflows Logo" width="120" />
-
 # Miro Workflows
 
-### Turn Natural Language into Miro Boards
+**Miro Workflows** is a production-ready TypeScript application for turning visual collaboration boards into repeatable, observable workflow operations. The repository now includes a polished React dashboard, a Node.js API, a persistent SQLite database layer powered by `sql.js`, reusable workflow templates, audit trails, seed data, validation scripts, and the existing custom MCP server for direct Miro board automation.
 
-**Describe what you want. AI creates the board. Full MCP integration with Cursor IDE — no drag-and-drop required.**
+The project is designed to run immediately in **demo mode** without secrets, while remaining ready for a real Miro integration through environment variables and provider adapters. Miro positions MCP as a way for compatible clients to query data, trigger actions, and access real-time context in Miro boards, and its REST API applications rely on scoped permissions such as `board:read` and `board:write`.[1] [2]
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![Bun](https://img.shields.io/badge/Bun-Runtime-f9f1e1?logo=bun)](https://bun.sh)
-[![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-8b5cf6)](https://modelcontextprotocol.io)
-[![Miro](https://img.shields.io/badge/Miro-API%20v2-ffd02f)](https://miro.com)
+> **Production intent.** This repository is no longer a TypeScript utility folder. It is a full-stack workflow operations product with a dashboard, backend services, database schemas, provider boundaries, seeded examples, and documentation suitable for real teams.
 
-[Quick Start](#quick-start) · [Features](#features) · [Custom MCP Server](#custom-mcp-server) · [Prompt Library](#usage-examples) · [Docs](#documentation)
+## What changed in this buildout
 
----
+| Area | Production buildout |
+| --- | --- |
+| Frontend | Added a responsive React command center with workflow catalog, board sync controls, recent runs, audit events, and run detail inspection. |
+| Backend | Added a Node.js API with health, summary, workspace, board, template, run, audit, and sync endpoints. |
+| Database | Added SQLite schema files, seed data, migrations, and a file-persisted `sql.js` repository layer that works without native build steps. |
+| Provider layer | Added a demo provider for zero-secret local development and a Miro REST provider boundary for token-backed board sync. |
+| MCP | Preserved the custom Miro MCP package and wired root-level scripts for MCP development and builds. |
+| Quality | Added seed, validation, smoke test, typecheck, and build scripts for release readiness. |
+| Documentation | Rewrote the README and added architecture documentation covering API contracts, data model, security, and deployment posture. |
 
-<img src="assets/cover.png" alt="Miro Workflows" width="100%" />
+## Product architecture
 
-</div>
+The application separates visual collaboration workflows into a clear four-layer architecture. The React client is the operator-facing cockpit, the API coordinates workflow execution and sync behavior, the database records state and auditability, and the provider layer keeps Miro-specific behavior isolated from the core application.
 
----
+| Layer | Responsibility | Key files |
+| --- | --- | --- |
+| React dashboard | Presents workflow templates, board status, execution history, audit events, and operational details. | `src/App.tsx`, `src/api.ts`, `src/styles.css` |
+| Node API | Serves JSON endpoints, validates requests, runs workflow templates, and exposes production health signals. | `server/index.ts`, `server/services/workflowService.ts` |
+| SQLite persistence | Stores workspaces, credentials metadata, boards, templates, runs, artifacts, and audit events. | `server/db/schema.sql`, `server/db/database.ts`, `server/db/seed.ts` |
+| Integration providers | Provides demo mode and token-backed Miro REST sync behind a stable interface. | `server/providers/miroProvider.ts` |
+| MCP server | Maintains direct tool-style Miro board operations for agent clients. | `miro-custom-mcp/src/index.ts`, `miro-custom-mcp/src/miro-api.ts` |
 
-## The Problem
+Miro's Node.js OAuth quickstart demonstrates a backend authorization flow based on environment variables, server-side routes, and authorization callbacks.[3] Miro's data persistence guidance also explains that production integrations should avoid default in-memory token storage and use a custom persistence layer for authorization state.[4] This repository reflects those patterns by storing connection metadata and workflow history in the database while keeping token values in the environment.
 
-Creating Miro boards is manual, repetitive, and slow. Every sprint planning session, architecture review, or retro starts with the same drag-and-drop ritual. And when you need to turn code into a visual diagram, you're stuck switching between your IDE and a whiteboard tool.
+## Repository structure
 
-## The Solution
-
-Miro Workflows lets you **describe any board in natural language** and creates it instantly through the Model Context Protocol (MCP). It works directly inside Cursor IDE — no context switching, no drag-and-drop. Just describe what you need, and the AI builds it on your Miro board.
-
-The project includes both the **official Miro MCP** integration (zero setup) and a **custom MCP server** that gives you full REST API v2 control with precise positioning, custom colors, all item types, and professional layouts.
-
-> *"Create a sprint planning board with backlog, in-progress, review, and done columns. Add 5 sample user stories."*
->
-> Done. Board created. Sticky notes placed. Columns organized.
-
----
-
-## Features
-
-- **Official Miro MCP Integration** — Connect to Miro's hosted MCP server (zero local setup)
-- **Custom MCP Server** — Full REST API v2 control with precise positioning, colors, and all item types
-- **AI-Powered Board Creation** — Generate diagrams, workflows, and architecture visualizations using natural language
-- **Code ↔ Diagram Conversion** — Transform code into visual diagrams and vice versa
-- **Team Collaboration** — Multiple developers working on the same Miro team boards simultaneously
-- **Curated Prompt Library** — Pre-built prompts for architecture diagrams, sprint planning, retros, SWOT analysis, and more
-- **Validation Tools** — Built-in setup validation script to verify your configuration
-- **Full Styling Control** — Custom colors, borders, fills, fonts, sizes, and precise (x, y) positioning
-
-## Quick Start
-
-### Prerequisites
-
-- [Bun](https://bun.sh/) v1.0.0 or higher
-- [Git](https://git-scm.com/)
-- [Cursor IDE](https://cursor.sh/)
-- A Miro account with team workspace access
-
-### Installation
-
-1. **Clone the repository**
-
-```bash
-git clone https://github.com/YOUR_USERNAME/miro-workflows.git
-cd miro-workflows
-```
-
-2. **Install dependencies**
-
-```bash
-bun install
-```
-
-3. **Validate your setup**
-
-```bash
-bun run validate
-```
-
-4. **Connect to Miro MCP in Cursor**
-
-- Open Cursor Settings (`Ctrl + ,`)
-- Navigate to **Features** → **MCP Servers**
-- Find "miro" and click **Connect**
-- Complete OAuth authentication
-- Select your Miro team
-
-### First Steps
-
-Try this prompt in Cursor to verify your connection:
-
-```
-Create a new Miro board called "Test Board" with a simple architecture diagram showing a frontend, backend, and database
-```
-
-## Project Structure
-
-```
+```text
 miro-workflows/
-├── .cursor/
-│   └── mcp.json              # MCP server configuration
 ├── docs/
-│   ├── SETUP.md              # Detailed setup instructions
-│   ├── PROMPTS.md            # Curated prompt library
-│   └── WORKFLOWS.md          # Workflow documentation template
-├── examples/
-│   └── sample_prompts.md     # Ready-to-use example prompts
+│   └── ARCHITECTURE.md
+├── miro-custom-mcp/
+│   ├── src/index.ts
+│   └── src/miro-api.ts
+├── server/
+│   ├── config.ts
+│   ├── db/
+│   │   ├── database.ts
+│   │   ├── schema.sql
+│   │   └── seed.ts
+│   ├── providers/miroProvider.ts
+│   └── services/workflowService.ts
+├── shared/types.ts
+├── src/
+│   ├── App.tsx
+│   ├── api.ts
+│   ├── main.tsx
+│   └── styles.css
 ├── scripts/
-│   └── validate_setup.ts     # Environment validation script
-├── .env.example              # Environment template
-├── .gitignore
-├── package.json
-├── tsconfig.json
-├── bunfig.toml
-└── README.md
+│   ├── smoke_api.ts
+│   └── validate_setup.ts
+├── index.html
+├── vite.config.ts
+└── package.json
 ```
 
-## Documentation
+## Database schema
 
-- **[SETUP.md](docs/SETUP.md)**: Complete setup guide for new team members
-- **[PROMPTS.md](docs/PROMPTS.md)**: Effective prompts and patterns for Miro MCP
-- **[WORKFLOWS.md](docs/WORKFLOWS.md)**: Template for documenting your boards and workflows
-- **[sample_prompts.md](examples/sample_prompts.md)**: Copy-paste examples for common scenarios
+The database schema is intentionally normalized around production workflow operations. It supports demo usage today and can be migrated to Postgres or another managed SQL database later without changing the product model.
 
-## Usage Examples
+| Table | Purpose |
+| --- | --- |
+| `workspaces` | Represents a connected organization, team, or demo workspace. |
+| `integration_credentials` | Stores credential metadata, scopes, expiry dates, and connection status without committing token secrets. |
+| `boards` | Tracks Miro boards or demo board references used by templates and sync jobs. |
+| `workflow_templates` | Stores reusable workflow definitions, step configuration, category, outcome, and default board mapping. |
+| `workflow_runs` | Records each workflow execution, status, summary, metrics, and timestamps. |
+| `board_items` | Records generated artifacts associated with a workflow run and target board. |
+| `audit_events` | Stores operational events for run creation, sync activity, warnings, and validation history. |
 
-### Generate Architecture Diagram
+## API surface
 
-```
-Create a microservices architecture diagram with:
-- API Gateway
-- Auth Service
-- User Service
-- Product Service
-- PostgreSQL database
-- Redis cache
-```
+| Method | Route | Description |
+| --- | --- | --- |
+| `GET` | `/api/health` | Returns runtime health, provider mode, database path, and timestamp. |
+| `GET` | `/api/summary` | Returns dashboard totals, integration status, boards, templates, and recent runs. |
+| `GET` | `/api/workspaces` | Lists workspaces and credential metadata. |
+| `GET` | `/api/boards` | Lists tracked boards. |
+| `GET` | `/api/templates` | Lists workflow templates. |
+| `GET` | `/api/templates/:slug` | Returns one workflow template by slug. |
+| `GET` | `/api/runs` | Lists recent workflow runs. |
+| `POST` | `/api/runs` | Executes a workflow template against a board. |
+| `GET` | `/api/runs/:id` | Returns run detail, generated items, template, board, and audit events. |
+| `GET` | `/api/audit-events` | Lists recent audit events. |
+| `POST` | `/api/sync/boards` | Syncs configured boards through the active provider. |
 
-### Convert Code to Diagram
+## Quick start
 
-```
-Analyze this repository [github-url] and create a class diagram showing component relationships
-```
-
-### Generate Code from Board
-
-```
-Based on the API design at [miro-board-url], generate FastAPI endpoints with Pydantic models
-```
-
-### Create Sprint Board
-
-```
-Create a sprint planning board with Backlog, In Progress, Review, and Done columns. Add 5 sample user stories.
-```
-
-## Collaboration Workflow
-
-### For Team Members
-
-1. Both developers authenticate with their own Miro accounts
-2. Select the **same Miro team** during OAuth
-3. Create and edit boards collaboratively
-4. Document boards in `docs/WORKFLOWS.md`
-5. Use conventional commits when pushing changes
-
-### Git Workflow
+Install dependencies, seed the database, validate the application, and start the API. The default mode requires no Miro token and writes a local SQLite database under `data/miro-workflows.sqlite`.
 
 ```bash
-# Pull latest changes
-git pull origin main
-
-# Create feature branch
-git checkout -b feature/new-workflow
-
-# Make changes and commit (use conventional commits)
-git commit -m "feat(docs): add new workflow template"
-
-# Push and create PR
-git push origin feature/new-workflow
+pnpm install
+pnpm run seed
+pnpm run validate
+pnpm run smoke
+pnpm run dev:api
 ```
 
-### Conventional Commits
+Open a second terminal for the Vite development server.
 
-This project follows [Conventional Commits](https://www.conventionalcommits.org/):
-
-- `feat:` New features
-- `fix:` Bug fixes
-- `docs:` Documentation changes
-- `chore:` Maintenance tasks
-- `refactor:` Code refactoring
-- `test:` Test updates
-
-Examples:
 ```bash
-git commit -m "feat(prompts): add database schema generation prompts"
-git commit -m "fix(scripts): resolve validation script path issue"
-git commit -m "docs: update setup guide with troubleshooting steps"
+pnpm run dev:web
 ```
 
-## Scripts
+The dashboard runs at `http://localhost:5173`, while the API runs at `http://localhost:8787`. In production, `pnpm run build:web` creates static assets in `dist/`, and the API can serve those assets from the same Node process.
 
-| Command | Description |
-|---------|-------------|
-| `bun run validate` | Validate development environment setup |
-| `bun install` | Install dependencies |
+## Environment configuration
 
-## Capabilities
+Create a local `.env` file only when you need to override defaults or connect a real Miro token. Do not commit secret values.
 
-The official Miro MCP server supports:
+| Variable | Default | Description |
+| --- | --- | --- |
+| `PORT` | `8787` | Node API port. |
+| `CORS_ORIGIN` | `*` | CORS origin for API responses. |
+| `DATABASE_PATH` | `data/miro-workflows.sqlite` | SQLite file path used by the repository layer. |
+| `MIRO_PROVIDER_MODE` | `demo` | Use `demo` for seeded local workflows or `miro` for token-backed sync. |
+| `MIRO_ACCESS_TOKEN` | empty | Optional Miro REST API token for live board sync. |
+| `VITE_API_BASE_URL` | empty | Optional frontend API base URL for deployed environments. |
 
-| Feature | Description |
-|---------|-------------|
-| **Generate Diagrams** | Create system architecture, workflows, ERDs, and more |
-| **Generate Code** | Convert diagrams and PRDs into working code |
-| **Read Board Context** | AI can analyze existing boards |
-| **OAuth 2.1 Security** | Enterprise-grade authentication |
-| **Team Collaboration** | Multiple users on same team boards |
+Miro recommends expiring authorization tokens for stronger security in REST API applications, and the OAuth tutorial uses environment variables for client credentials and redirect URLs.[2] [3] The current buildout supports a service-token style integration for board sync while preserving the schema and provider boundary needed for a future OAuth connection flow.
 
-## Supported AI Clients
+## Available scripts
 
-- Cursor ✓
-- Claude Code
-- VSCode + GitHub Copilot
-- Gemini CLI
-- Lovable
-- Replit
-- Windsurf
-- And more MCP-compatible clients
+| Command | Purpose |
+| --- | --- |
+| `pnpm run dev:api` | Starts the Node API with TypeScript watch mode. |
+| `pnpm run dev:web` | Starts the Vite React dashboard. |
+| `pnpm run seed` | Applies the schema and seeds demo workspace, boards, templates, and audit state. |
+| `pnpm run validate` | Verifies that schema, seed data, and summary state are healthy. |
+| `pnpm run smoke` | Runs a full workflow execution and board sync smoke test. |
+| `pnpm run typecheck` | Runs strict TypeScript checks across frontend, backend, shared code, and scripts. |
+| `pnpm run build:web` | Builds the React dashboard for production. |
+| `pnpm run build:api` | Compiles the backend TypeScript project. |
+| `pnpm run build` | Runs frontend, backend, and MCP builds. |
+| `pnpm run mcp:dev` | Starts the custom MCP package in development mode. |
+| `pnpm run mcp:build` | Builds the custom MCP package. |
 
-## Troubleshooting
+## Workflow templates included
 
-### Connection Issues
+| Template | Category | Operational outcome |
+| --- | --- | --- |
+| Sprint Planning Accelerator | Agile delivery | Converts planning steps into structured agenda, prioritization, risk review, and commitments. |
+| Product Discovery Canvas | Product strategy | Produces discovery artifacts for users, jobs, evidence, experiments, and decisions. |
+| Incident Review Retro | Operations | Creates a post-incident narrative, timeline, root-cause review, and prevention plan. |
 
-**Problem**: Cannot connect to Miro MCP
+## Production readiness checklist
 
-**Solutions**:
-1. Verify network access to `https://mcp.miro.com/`
-2. Update Cursor to latest version
-3. Disconnect and reconnect MCP server
+The repository is set up for production-style development, but live deployments should still complete environment-specific hardening. In particular, teams should add managed hosting, an external SQL database, rate limiting, centralized logging, a secret manager, and a full OAuth flow if user-specific Miro authorization is required.
 
-### Team Selection Error
+| Capability | Current status | Production note |
+| --- | --- | --- |
+| TypeScript frontend and backend | Complete | Strict typecheck is wired at the root. |
+| Persistent local database | Complete | Uses SQLite via `sql.js`; replace with managed SQL for multi-user production. |
+| Demo mode | Complete | Works without secrets for review, demos, and CI smoke tests. |
+| Miro token-backed provider | Ready | Set `MIRO_PROVIDER_MODE=miro` and `MIRO_ACCESS_TOKEN` for live sync. |
+| OAuth persistence model | Prepared | Credential metadata exists; token encryption and refresh flow should be added before multi-user production. |
+| Auditability | Complete | Workflow execution and sync events are recorded in `audit_events`. |
+| MCP continuity | Complete | Existing custom MCP server remains in the repository and builds independently. |
 
-**Problem**: Cannot access boards or permission denied
+## References
 
-**Solution**: Re-authenticate and ensure you select the correct Miro team (must match your collaborator's team)
-
-### OAuth Token Expired
-
-**Solution**: Disconnect and reconnect in Cursor Settings → MCP Servers
-
-For more troubleshooting, see [docs/SETUP.md](docs/SETUP.md).
-
-## Resources
-
-- [Official Miro MCP Documentation](https://developers.miro.com/docs/miro-mcp)
-- [MCP Introduction](https://developers.miro.com/docs/mcp-intro)
-- [Miro MCP Tools & Prompts](https://developers.miro.com/docs/miro-mcp-prompts)
-- [Miro Developer Community](https://community.miro.com/developer-platform-and-apis-57)
-
-## Security
-
-- OAuth 2.1 authentication
-- No API keys stored in repository
-- Enterprise-grade security from Miro
-- Permission-based board access
-- Rate limiting protection
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Follow conventional commits
-5. Submit a pull request
-
-## License
-
-MIT License - see LICENSE file for details
-
-## Support
-
-- Open an issue for bugs or feature requests
-- Check [docs/SETUP.md](docs/SETUP.md) for setup help
-- Review [docs/PROMPTS.md](docs/PROMPTS.md) for usage guidance
-
-## Custom MCP Server
-
-The official Miro MCP only creates basic flowchart diagrams. The included custom MCP server (`miro-custom-mcp/`) gives you full control:
-
-| Capability | Official MCP | Custom MCP Server |
-|---|---|---|
-| Basic flowcharts | Yes | Yes |
-| Precise (x, y) positioning | No | Yes |
-| Custom hex colors | No | Yes |
-| Sticky notes, shapes, frames, cards | Limited | Full |
-| Update and delete items | No | Yes |
-| Professional layouts (SWOT, dashboards) | No | Yes |
-| Full border/fill/font styling | No | Yes |
-
-See [miro-custom-mcp/README.md](./miro-custom-mcp/README.md) for setup instructions.
-
----
-
-## Roadmap
-
-- [ ] Template marketplace for common board layouts
-- [ ] Automated board-to-code generation pipeline
-- [ ] Real-time board sync with Git commits
-- [ ] VS Code extension (beyond Cursor)
-- [ ] Board versioning and diff visualization
-- [ ] Slack/Discord bot for board creation
-
----
-
-<div align="center">
-
-**Built by [Alex Cinovoj](https://github.com/Alexi5000) · [TechTide AI](https://github.com/Alexi5000)**
-
-*Stop dragging. Start describing.*
-
-</div>
+[1]: https://developers.miro.com/docs/miro-mcp "Miro MCP documentation"
+[2]: https://developers.miro.com/docs/rest-api-build-your-first-hello-world-app "Miro REST API quickstart"
+[3]: https://developers.miro.com/docs/miro-nodejs-quickstart-with-oauth-and-express "Miro Node.js quickstart with OAuth and Express"
+[4]: https://developers.miro.com/docs/miro-nodejs-implement-storage-for-data-persistence "Miro Node.js data persistence guide"

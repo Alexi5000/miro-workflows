@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 // file: miro-custom-mcp/src/index.ts
 // description: Main MCP server entry point with all custom Miro tools
 // reference: @modelcontextprotocol/sdk
@@ -9,18 +9,18 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { MiroApiClient } from "./miro-api.ts";
+import { MiroApiClient } from "./miro-api.js";
 
 // Import all tools
-import { create_sticky_note, create_sticky_note_schema } from "./tools/create_sticky_note.ts";
-import { create_shape, create_shape_schema } from "./tools/create_shape.ts";
-import { create_frame, create_frame_schema } from "./tools/create_frame.ts";
-import { create_text, create_text_schema } from "./tools/create_text.ts";
-import { create_card, create_card_schema } from "./tools/create_card.ts";
-import { create_connector, create_connector_schema } from "./tools/create_connector.ts";
-import { get_board_items, get_board_items_schema } from "./tools/get_board_items.ts";
-import { update_item, update_item_schema } from "./tools/update_item.ts";
-import { delete_item, delete_item_schema } from "./tools/delete_item.ts";
+import { create_sticky_note, create_sticky_note_schema } from "./tools/create_sticky_note.js";
+import { create_shape, create_shape_schema } from "./tools/create_shape.js";
+import { create_frame, create_frame_schema } from "./tools/create_frame.js";
+import { create_text, create_text_schema } from "./tools/create_text.js";
+import { create_card, create_card_schema } from "./tools/create_card.js";
+import { create_connector, create_connector_schema } from "./tools/create_connector.js";
+import { get_board_items, get_board_items_schema } from "./tools/get_board_items.js";
+import { update_item, update_item_schema } from "./tools/update_item.js";
+import { delete_item, delete_item_schema } from "./tools/delete_item.js";
 
 // Get access token from environment
 const MIRO_ACCESS_TOKEN = process.env.MIRO_ACCESS_TOKEN || "";

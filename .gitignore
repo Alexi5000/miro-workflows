@@ -12,6 +12,10 @@ dist/
 build/
 *.log
 
+# Local database artifacts
+data/*.sqlite
+data/*.sqlite-*
+
 # OS files
 .DS_Store
 Thumbs.db
@@ -24,8 +28,6 @@ desktop.ini
 *.swo
 *~
 
-# Bun
-.bun/
 
 # Temporary files
 *.tmp

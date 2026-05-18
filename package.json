@@ -1,24 +1,57 @@
 {
   "name": "miro-workflows",
   "version": "1.0.0",
+  "private": false,
   "type": "module",
-  "module": "scripts/validate_setup.ts",
-  "description": "Collaborative Miro board creation and workflow management using MCP",
-  "packageManager": "bun@1.x",
+  "description": "Production-ready Miro workflow operations dashboard with TypeScript, a Node API, SQLite schemas, and MCP tooling.",
+  "packageManager": "pnpm@10.11.1",
   "scripts": {
-    "validate": "bun run scripts/validate_setup.ts",
-    "dev": "bun run --watch scripts/validate_setup.ts"
+    "dev": "pnpm run seed && pnpm run dev:api",
+    "dev:api": "tsx watch server/index.ts",
+    "dev:web": "vite --host 0.0.0.0",
+    "seed": "tsx server/db/seed.ts",
+    "build": "pnpm run build:web && pnpm run build:api && pnpm run mcp:build",
+    "build:web": "vite build",
+    "build:api": "tsc -p tsconfig.server.json",
+    "typecheck": "tsc --noEmit",
+    "validate": "tsx scripts/validate_setup.ts",
+    "smoke": "tsx scripts/smoke_api.ts",
+    "mcp:dev": "cd miro-custom-mcp && pnpm run dev",
+    "mcp:build": "cd miro-custom-mcp && pnpm run build"
   },
   "keywords": [
     "miro",
     "mcp",
     "model-context-protocol",
     "workflows",
-    "collaboration"
+    "collaboration",
+    "react",
+    "typescript",
+    "sqlite",
+    "nodejs"
   ],
   "author": "TechTide",
   "license": "MIT",
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "typescript": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "lucide-react": "latest",
+    "zod": "^3.23.8",
+    "sql.js": "^1.13.0"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@types/node": "^22.15.19",
+    "tsx": "^4.19.4",
+    "@types/sql.js": "^1.4.9"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

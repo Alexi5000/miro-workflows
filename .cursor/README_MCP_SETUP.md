@@ -1,109 +1,62 @@
-# Miro MCP Servers Configuration
+# Miro MCP Setup
 
-This project uses **TWO** Miro MCP servers:
+This repository supports two Miro integration paths. The full-stack dashboard and API run from the root package, while the custom MCP server under `miro-custom-mcp/` exposes precise board automation tools to MCP-compatible clients.
 
-## 1. Official Miro MCP (`miro`)
-- **URL**: `https://mcp.miro.com/`
-- **Auth**: OAuth (already authenticated via browser)
-- **Capabilities**: Basic flowchart diagrams, read boards
-- **Use for**: Quick diagram generation, board reading
+## Official hosted MCP
 
-## 2. Custom Miro MCP (`miro-custom`)
-- **Type**: Local server with full API control
-- **Auth**: Personal Access Token (requires setup)
-- **Capabilities**: 
-  - Create sticky notes with exact colors & positions
-  - Create shapes (rectangles, circles, etc.) with custom styling
-  - Create frames to organize content
-  - Create text with font control
-  - Create cards for Kanban boards
-  - Create connectors between items
-  - Update existing items (move, resize, restyle)
-  - Delete items
-- **Use for**: Professional layouts, precise positioning, custom styling
-
-## Setup Required for Custom MCP
-
-### Step 1: Get Your Miro Access Token
-
-Run this command to see detailed instructions:
-```bash
-bun run scripts/get_miro_token.ts
-```
-
-Or manually:
-1. Go to: https://miro.com/app/settings/user-profile/apps
-2. Create a new app or use existing
-3. Enable scopes: `boards:read`, `boards:write`
-4. Generate access token
-5. Copy the token
-
-### Step 2: Configure the Token
-
-Edit `.cursor/mcp.json` and replace the empty string in the `MIRO_ACCESS_TOKEN` field:
+For the hosted Miro MCP server, configure your client with Miro's hosted endpoint and complete the OAuth flow in the browser. Enterprise users may need an administrator to enable hosted MCP access for the organization.
 
 ```json
-"miro-custom": {
-  "command": "bun",
-  "args": ["run", "miro-custom-mcp/src/index.ts"],
-  "env": {
-    "MIRO_ACCESS_TOKEN": "paste_your_token_here"
+{
+  "mcpServers": {
+    "miro": {
+      "url": "https://mcp.miro.com/"
+    }
   }
 }
 ```
 
-### Step 3: Reload Cursor
+## Custom local MCP
 
-1. Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac)
-2. Type "Developer: Reload Window"
-3. Press Enter
+Install and build the custom MCP package.
 
-### Step 4: Verify
-
-In Cursor, go to Settings → Features → MCP Servers
-
-You should see both:
-- ✅ `miro` (official) - Connected
-- ✅ `miro-custom` (local) - Connected
-
-## Usage Examples
-
-### Using Official MCP (Basic)
-```
-Create a flowchart showing user login process
+```bash
+cd miro-custom-mcp
+pnpm install
+pnpm run build
 ```
 
-### Using Custom MCP (Advanced)
+Configure your MCP client to launch the compiled Node entry point.
+
+```json
+{
+  "mcpServers": {
+    "miro-custom": {
+      "command": "node",
+      "args": ["/absolute/path/to/miro-workflows/miro-custom-mcp/dist/index.js"],
+      "env": {
+        "MIRO_ACCESS_TOKEN": "your-token"
+      }
+    }
+  }
+}
 ```
-Create a yellow sticky note at position (100, 200) with the text "API Cost Analysis"
 
-Create a blue rectangle at (300, 200) with width 250 and height 150 containing "Database Layer"
+For development, you can run the server directly with TypeScript.
 
-Create a frame titled "Sprint Planning" at (0, 0) with width 1200 and height 800 with light gray background
-
-Create a pink card at (500, 300) with title "Bug Fix" and description "Fix authentication timeout issue"
+```bash
+cd miro-custom-mcp
+MIRO_ACCESS_TOKEN=your-token pnpm run dev
 ```
 
-## Troubleshooting
+## Validation
 
-### Custom MCP Not Showing
-- Check that your token is set in `.cursor/mcp.json`
-- Reload Cursor window
-- Check Cursor's MCP logs in Settings
+From the repository root, validate the full application with the standard checks.
 
-### "MIRO_ACCESS_TOKEN is not set" Error
-- You haven't configured your token yet
-- Run: `bun run scripts/get_miro_token.ts` for instructions
+```bash
+pnpm run seed
+pnpm run validate
+pnpm run smoke
+```
 
-### API Errors
-- Verify your token is valid
-- Check you have the correct scopes enabled
-- Ensure you have access to the board you're trying to modify
-
-## Both Servers Work Together
-
-You can use BOTH servers in the same session:
-- Use the **official MCP** for quick flowcharts
-- Use the **custom MCP** for precise, styled layouts
-
-The custom server gives you full control without losing the convenience of the official one!
+Do not commit access tokens, OAuth credentials, private board URLs, or generated local database files.

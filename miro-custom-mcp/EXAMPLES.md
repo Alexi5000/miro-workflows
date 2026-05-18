@@ -212,5 +212,5 @@ The Miro board uses a coordinate system:
 ## Need Help?
 
 - See `.cursor/README_MCP_SETUP.md` for configuration help
-- Run `bun run scripts/get_miro_token.ts` for token setup
+- Set `MIRO_ACCESS_TOKEN` in your shell or MCP client environment for live board operations
 - Check Miro API docs: https://developers.miro.com/reference/api-reference

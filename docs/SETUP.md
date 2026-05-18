@@ -1,153 +1,101 @@
-# Developer Setup Guide
+# Miro Workflows Setup Guide
 
-This guide will help you set up your local development environment to collaborate on Miro boards using the official Miro MCP server.
+This guide explains how to run **Miro Workflows** as a full-stack TypeScript application. The default path uses demo mode, which means you can validate the dashboard, API, database schema, workflow templates, and audit trail without a Miro token.
 
 ## Prerequisites
 
-Before starting, ensure you have:
+| Requirement | Recommended version | Purpose |
+| --- | --- | --- |
+| Node.js | 22 or later | Runs the API, scripts, Vite, and MCP package. |
+| pnpm | 10 or later | Installs dependencies and runs workspace scripts. |
+| Git | Current stable | Clones and contributes to the repository. |
+| Miro account | Optional for demo mode | Required only when using live Miro REST sync. |
 
-- [Bun](https://bun.sh/) installed (v1.0.0 or higher)
-- [Git](https://git-scm.com/) installed
-- [Cursor IDE](https://cursor.sh/) installed
-- A Miro account with access to a team workspace
+## Local installation
 
-## Installation Steps
-
-### 1. Clone the Repository
+Clone the repository and install dependencies.
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/miro-workflows.git
+git clone https://github.com/Alexi5000/miro-workflows.git
 cd miro-workflows
+pnpm install
 ```
 
-### 2. Install Dependencies
+Seed and validate the local database.
 
 ```bash
-bun install
+pnpm run seed
+pnpm run validate
+pnpm run smoke
 ```
 
-### 3. Verify Setup
-
-Run the validation script to check your environment:
+Start the API server.
 
 ```bash
-bun run validate
+pnpm run dev:api
 ```
 
-This will verify:
-- Bun is installed correctly
-- Git is configured
-- MCP configuration exists
-- All required files are present
-
-## Connecting to Miro MCP
-
-### Step 1: Open Cursor Settings
-
-1. Open Cursor IDE
-2. Press `Ctrl + ,` (Windows/Linux) or `Cmd + ,` (Mac)
-3. Navigate to **Features** → **MCP Servers**
-
-### Step 2: Verify MCP Configuration
-
-The MCP configuration should already exist in `.cursor/mcp.json`. If you need to add it manually:
-
-1. Click **Add Server**
-2. Add the following configuration:
-
-```json
-{
-  "miro": {
-    "url": "https://mcp.miro.com/"
-  }
-}
-```
-
-### Step 3: Connect and Authenticate
-
-1. In the MCP Servers list, find "miro"
-2. Click **Connect**
-3. Your browser will open for OAuth authentication
-4. **IMPORTANT**: Select the same Miro team that your collaborators are using
-5. Grant the requested permissions
-6. Return to Cursor - you should see a "Connected" status
-
-### Step 4: Verify Connection
-
-In Cursor, try this test prompt:
-
-```
-List my Miro boards
-```
-
-If successful, you'll see your Miro boards listed.
-
-## Team Collaboration Notes
-
-### Miro Team Selection
-
-Both builders must:
-- Authenticate with the **same Miro team**
-- Have access to the team's boards
-- Use their individual Miro accounts (no shared credentials needed)
-
-### GitHub Workflow
-
-1. **Before making changes**: `git pull origin main`
-2. **Create a feature branch**: `git checkout -b feature/your-feature-name`
-3. **Make your changes and commit**: Use [Conventional Commits](https://www.conventionalcommits.org/)
-4. **Push and create PR**: `git push origin feature/your-feature-name`
-5. **Review and merge**: Have your collaborator review the PR
-
-### Conventional Commit Examples
+Start the React dashboard in a second terminal.
 
 ```bash
-feat(docs): add new workflow template
-fix(scripts): resolve validation script path issue
-docs: update setup instructions
-chore(deps): update bun dependencies
+pnpm run dev:web
 ```
 
-## Troubleshooting
+The dashboard is available at `http://localhost:5173`, and the API is available at `http://localhost:8787`.
 
-### MCP Connection Issues
+## Environment variables
 
-**Problem**: "Cannot connect to Miro MCP server"
+The application works without an `.env` file in demo mode. Add one only when you need to override defaults or connect live Miro sync.
 
-**Solutions**:
-1. Verify your network can reach `https://mcp.miro.com/`
-2. Ensure you're using the latest version of Cursor
-3. Try disconnecting and reconnecting
-4. Check the Cursor developer console for errors
+```bash
+cp .env.example .env
+```
 
-### Team Selection Error
+| Variable | Example | Description |
+| --- | --- | --- |
+| `PORT` | `8787` | API server port. |
+| `CORS_ORIGIN` | `http://localhost:5173` | Browser origin allowed to call the API. |
+| `DATABASE_PATH` | `data/miro-workflows.sqlite` | SQLite file path. |
+| `MIRO_PROVIDER_MODE` | `demo` or `miro` | Selects demo provider or Miro REST provider. |
+| `MIRO_ACCESS_TOKEN` | `access-token-value` | Optional token used only when `MIRO_PROVIDER_MODE=miro`. |
+| `VITE_API_BASE_URL` | `https://example.com` | Optional deployed API origin for the React client. |
 
-**Problem**: "Cannot access board" or "Permission denied"
+## Live Miro sync
 
-**Solutions**:
-1. Verify you selected the correct Miro team during OAuth
-2. Disconnect from MCP and reconnect, selecting the right team
-3. Confirm with your collaborator which team they're using
+Set the provider mode and token before starting the API.
 
-### OAuth Token Expired
+```bash
+MIRO_PROVIDER_MODE=miro MIRO_ACCESS_TOKEN=your-token pnpm run dev:api
+```
 
-**Problem**: MCP was working but now shows errors
+The current provider uses the token for board sync. Workflow execution remains safe to run in demo style until team-specific write operations are expanded and approved.
 
-**Solution**:
-1. Go to Cursor Settings → MCP Servers
-2. Disconnect from "miro"
-3. Reconnect and complete OAuth again
+## Production build
 
-## Need Help?
+Run all production checks and builds.
 
-- Check [docs/PROMPTS.md](./PROMPTS.md) for effective prompts
-- See [examples/sample_prompts.md](../examples/sample_prompts.md) for board creation examples
-- Refer to [Miro MCP Documentation](https://developers.miro.com/docs/miro-mcp)
+```bash
+pnpm run typecheck
+pnpm run build:web
+pnpm run build:api
+pnpm run validate
+pnpm run smoke
+```
 
-## Next Steps
+For a single command that includes the custom MCP build, use the root build script.
 
-Once connected:
-1. Review [PROMPTS.md](./PROMPTS.md) for curated Miro MCP prompts
-2. Try creating your first board using AI
-3. Document your workflows in [WORKFLOWS.md](./WORKFLOWS.md)
-4. Collaborate with your team member!
+```bash
+pnpm run build
+```
+
+## Custom MCP package
+
+The MCP package is retained under `miro-custom-mcp/`. Install its package dependencies when working on MCP tools directly.
+
+```bash
+cd miro-custom-mcp
+pnpm install
+pnpm run dev
+```
+
+The MCP server reads `MIRO_ACCESS_TOKEN` from the environment and communicates over stdio for MCP-compatible clients.

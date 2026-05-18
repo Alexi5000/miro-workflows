@@ -2,14 +2,20 @@
   "name": "miro-custom-mcp",
   "version": "1.0.0",
   "type": "module",
-  "description": "Custom Miro MCP Server with full API control",
-  "main": "src/index.ts",
+  "description": "Custom Miro MCP server with full API control for board automation workflows.",
+  "main": "dist/index.js",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "start": "bun run src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun"
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.json"
   },
-  "keywords": ["mcp", "miro", "model-context-protocol"],
+  "keywords": [
+    "mcp",
+    "miro",
+    "model-context-protocol",
+    "nodejs",
+    "typescript"
+  ],
   "author": "TechTide",
   "license": "MIT",
   "dependencies": {
@@ -17,6 +23,13 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/node": "^24.10.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

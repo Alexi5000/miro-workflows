@@ -47,7 +47,7 @@ This is a one-time setup that takes about 60 seconds.
    • You can revoke it anytime from the same URL above
 
 🚀 Next Steps:
-   • After saving your token, run: bun run validate
+   • After saving your token, run: pnpm run validate
    • This will test your connection to Miro
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

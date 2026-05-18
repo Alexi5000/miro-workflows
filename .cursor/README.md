@@ -43,10 +43,12 @@ If you prefer to create the file manually, create `.cursor/mcp.json` with:
 
 ## Verification
 
-After setup, verify the connection by running:
+After setup, validate the full-stack application from the repository root:
 
 ```bash
-bun run validate
+pnpm run seed
+pnpm run validate
+pnpm run smoke
 ```
 
-The MCP Configuration check should pass.
+For custom local MCP validation, build the package under `miro-custom-mcp/` and configure your client to run the compiled Node entry point.

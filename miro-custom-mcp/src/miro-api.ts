@@ -14,7 +14,7 @@ import type {
   MiroFrameData,
   MiroConnectorData,
   MiroListResponse,
-} from "./types.ts";
+} from "./types.js";
 
 const MIRO_API_BASE = "https://api.miro.com/v2";
 
@@ -24,7 +24,7 @@ export class MiroApiClient {
   constructor(access_token: string) {
     if (!access_token || access_token === "your_token_here" || access_token.trim() === "") {
       throw new Error(
-        "MIRO_ACCESS_TOKEN is not set. Run: bun run ../scripts/get_miro_token.ts"
+        "MIRO_ACCESS_TOKEN is not set. Export MIRO_ACCESS_TOKEN before starting the custom MCP server."
       );
     }
     this.access_token = access_token;
@@ -51,7 +51,7 @@ export class MiroApiClient {
         );
       }
 
-      return await response.json();
+      return (await response.json()) as T;
     } catch (error) {
       throw new Error(`Miro API request failed: ${error}`);
     }
