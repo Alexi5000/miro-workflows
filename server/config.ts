@@ -19,8 +19,16 @@ function readProviderMode(token: string | undefined): ProviderMode {
   return token ? "miro" : "demo";
 }
 
+function readDatabasePath(): string {
+  const urlPath = process.env.DATABASE_URL?.replace(/^sqlite:\/\//, "");
+  if (urlPath) return resolve(urlPath);
+  const legacy = process.env.DATABASE_PATH;
+  if (legacy) return resolve(legacy);
+  return resolve("data/miro-workflows.sqlite");
+}
+
 export function getConfig(): AppConfig {
-  const databasePath = resolve(process.env.DATABASE_URL?.replace(/^sqlite:\/\//, "") || "data/miro-workflows.sqlite");
+  const databasePath = readDatabasePath();
   mkdirSync(dirname(databasePath), { recursive: true });
   const token = process.env.MIRO_ACCESS_TOKEN || "";
   return {
