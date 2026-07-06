@@ -1,20 +1,21 @@
-import { z } from "zod";
 import type { WorkflowRunMetrics } from "../../shared/types.js";
+import { parseContract, type SprintContractV1 } from "../../shared/contracts/index.js";
 import { getConfig } from "../config.js";
 import { repository } from "../db/database.js";
 import { DemoMiroProvider, MiroRestProvider, type WorkflowProvider } from "../providers/miroProvider.js";
-
-const runSchema = z.object({
-  templateSlug: z.string().min(1),
-  boardId: z.string().min(1).optional(),
-  triggeredBy: z.string().min(1).default("local-user"),
-});
 
 const config = getConfig();
 const provider: WorkflowProvider = config.providerMode === "miro" ? new MiroRestProvider(config.miroAccessToken) : new DemoMiroProvider();
 
 export async function startWorkflowRun(raw: unknown) {
-  const input = runSchema.parse(raw);
+  let parsed;
+  try {
+    parsed = parseContract<SprintContractV1>("sprint", raw);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new ResponseError(400, `Invalid sprint contract — ${message}`);
+  }
+  const input = parsed.value;
   const template = repository.getTemplateBySlug(input.templateSlug);
   if (!template) throw new ResponseError(404, `Unknown workflow template: ${input.templateSlug}`);
   const board = repository.getBoard(input.boardId || template.defaultBoardId);
@@ -30,7 +31,7 @@ export async function startWorkflowRun(raw: unknown) {
     riskScore: Math.max(1, Math.min(10, 11 - template.steps.length)),
   };
 
-  const run = repository.createRun({
+  const run = await repository.createRun({
     templateId: template.id,
     boardId: board.id,
     status: "completed",
@@ -41,8 +42,8 @@ export async function startWorkflowRun(raw: unknown) {
     finishedAt: new Date().toISOString(),
   });
 
-  for (const item of providerResult.items) repository.createBoardItem({ ...item, runId: run.id });
-  repository.createAuditEvent({
+  for (const item of providerResult.items) await repository.createBoardItem({ ...item, runId: run.id });
+  await repository.createAuditEvent({
     workspaceId: board.workspaceId,
     runId: run.id,
     eventType: "workflow.completed",

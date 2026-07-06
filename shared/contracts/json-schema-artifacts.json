@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://miro-workflows.dev/contracts/sprint.v1.0.0.json",
+  "title": "MiroWorkflows.Sprint.v1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["templateSlug", "triggeredBy"],
+  "properties": {
+    "templateSlug": { "type": "string", "minLength": 1 },
+    "boardId": { "type": "string" },
+    "triggeredBy": { "type": "string", "minLength": 1, "default": "local-user" },
+    "parameters": { "type": "object", "additionalProperties": true }
+  }
+}

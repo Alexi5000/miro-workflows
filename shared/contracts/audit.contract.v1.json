@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://miro-workflows.dev/contracts/audit.v1.0.0.json",
+  "title": "MiroWorkflows.AuditEvent.v1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "workspaceId",
+    "eventType",
+    "message"
+  ],
+  "properties": {
+    "workspaceId": {
+      "type": "string"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "eventType": {
+      "type": "string"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ]
+    },
+    "message": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}
