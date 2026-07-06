@@ -16,8 +16,17 @@
     "typecheck": "tsc --noEmit",
     "validate": "tsx scripts/validate_setup.ts",
     "smoke": "tsx scripts/smoke_api.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "contracts:build": "tsx scripts/build_contracts.ts",
+    "contracts:check": "tsx scripts/check_contract_versions.ts",
     "mcp:dev": "cd miro-custom-mcp && pnpm run dev",
-    "mcp:build": "cd miro-custom-mcp && pnpm run build"
+    "mcp:build": "cd miro-custom-mcp && pnpm run build",
+    "mcp:test": "cd miro-custom-mcp && pnpm test",
+    "ci": "pnpm run typecheck && pnpm run contracts:check && pnpm run test && pnpm run smoke && pnpm run validate",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down -v"
   },
   "keywords": [
     "miro",
@@ -34,20 +43,24 @@
   "license": "MIT",
   "dependencies": {
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
-    "typescript": "latest",
+    "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "lucide-react": "latest",
-    "zod": "^3.23.8",
-    "sql.js": "^1.13.0"
+    "sql.js": "^1.13.0",
+    "typescript": "latest",
+    "vite": "latest",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/node": "^22.15.19",
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "@types/node": "^22.15.19",
+    "@types/sql.js": "^1.4.9",
+    "@types/supertest": "^6.0.3",
+    "@vitest/coverage-v8": "^2.1.9",
+    "supertest": "^7.2.2",
     "tsx": "^4.19.4",
-    "@types/sql.js": "^1.4.9"
+    "vitest": "^2.1.9"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
