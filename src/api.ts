@@ -3,10 +3,12 @@ import type { AuditEvent, Board, BoardItem, DashboardSummary, RunDetail, Workflo
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
-    headers: { "content-type": "application/json", ...(options.headers || {}) },
-    ...options,
-  });
+  const headers: Record<string, string> = { "content-type": "application/json", ...(options.headers as Record<string, string> | undefined) };
+  if (typeof window !== "undefined") {
+    const token = window.localStorage.getItem("miro-workflows.auth.token");
+    if (token) headers["authorization"] = `Bearer ${token}`;
+  }
+  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({ error: response.statusText }));
     throw new Error(payload.error || `Request failed with ${response.status}`);
