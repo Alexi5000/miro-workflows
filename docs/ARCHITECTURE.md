@@ -29,11 +29,14 @@ The production buildout uses a compact full-stack monorepo that is easy to run l
 | Layer | Directory | Responsibility |
 |---|---|---|
 | Frontend | `src/` | React dashboard, workflow catalog, board run review, connection status, and operational analytics. |
-| Backend API | `server/` | HTTP API, health checks, workflow execution, database access, provider abstraction, and audit logging. |
+| Backend API | `server/` | HTTP API (raw `node:http` + zod), workflow execution, database access, provider abstraction, and audit logging. |
 | Shared model | `shared/` | Workflow, board, run, audit, and API response contracts used by both frontend and backend. |
-| Database | `server/db/` | SQLite schema for local production parity, seed data, and repository-backed persistence helpers. |
-| Miro MCP | `miro-custom-mcp/` | Custom MCP tools for direct board item creation, updates, deletion, and retrieval. |
-| Documentation | `docs/` | Architecture, setup, workflow recipes, and operational guides. |
+| Typed contracts | `shared/contracts/` | Versioned zod + JSON-Schema source of truth (sprint, audit-event, run-result). |
+| Database | `server/db/` | `sql.js` SQLite, schema, seed data, and repository-backed persistence helpers. |
+| Miro MCP | `miro-custom-mcp/` | 20 custom MCP tools (boards + items + composite) over stdio. Live and demo modes. |
+| Containerization | `Dockerfile.web`, `Dockerfile.api`, `Dockerfile.mcp`, `docker-compose.yml` | Multi-stage builds + a single `docker compose up` for the full stack. |
+| Documentation | `docs/` | Architecture, setup, contracts, testing, skills, MCP tool catalog, ADRs. |
+| ADRs | `docs/adr/` | One Nygard-template ADR per load-bearing architectural choice. |
 
 ## Data Model
 

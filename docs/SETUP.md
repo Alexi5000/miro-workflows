@@ -78,14 +78,47 @@ Run all production checks and builds.
 pnpm run typecheck
 pnpm run build:web
 pnpm run build:api
+pnpm run mcp:build
 pnpm run validate
 pnpm run smoke
 ```
 
-For a single command that includes the custom MCP build, use the root build script.
+For a single command, use the root build script (which chains the above plus `mcp:build`):
 
 ```bash
 pnpm run build
+```
+
+## Tests
+
+| Command | Purpose |
+| --- | --- |
+| `pnpm test` | Vitest suite for server, contracts, scripts. |
+| `pnpm run coverage` | With `@vitest/coverage-v8`, fails if below the 80% threshold. |
+| `pnpm run mcp:test` | Vitest suite for the MCP package. |
+| `pnpm run ci` | typecheck + contracts:check + test + smoke + validate. |
+
+See [`docs/TESTING.md`](TESTING.md) for the full coverage policy.
+
+## Docker
+
+Bring up the full stack (web + api + mcp + a `miro-data` named volume).
+
+```bash
+docker compose up --build
+```
+
+This will:
+
+- Run the React/Vite dashboard on `http://localhost:5173`, proxying `/api` to the api service.
+- Run the HTTP API on `http://localhost:8787` with a SQLite database mounted in a named volume.
+- Boot the MCP server in stdio mode (attach via `docker compose attach miro-mcp` or wire a host MCP client to it).
+- Default to demo mode; pass `MIRO_PROVIDER_MODE=miro` and `MIRO_ACCESS_TOKEN=...` in `.env` to switch to live Miro.
+
+Tear it down:
+
+```bash
+docker compose down -v
 ```
 
 ## Custom MCP package
@@ -98,4 +131,4 @@ pnpm install
 pnpm run dev
 ```
 
-The MCP server reads `MIRO_ACCESS_TOKEN` from the environment and communicates over stdio for MCP-compatible clients.
+The MCP server reads `MIRO_ACCESS_TOKEN` from the environment and communicates over stdio for MCP-compatible clients. With no token, it runs in **demo mode** against `FakeMiroApiClient`, so agents can iterate without Miro.
