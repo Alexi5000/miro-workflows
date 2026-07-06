@@ -8,15 +8,50 @@ import { ResponseError, startWorkflowRun, syncBoards } from "./services/workflow
 export interface StartServerOptions {
   port?: number;
   corsOrigin?: string;
+  /** Max request body size in bytes. Default 1 MiB. */
+  maxBodyBytes?: number;
 }
 
-async function readBody(request: IncomingMessage): Promise<string> {
+/** Read a request body with a hard byte cap. Rejects with `ResponseError` on overflow. */
+async function readBody(request: IncomingMessage, maxBytes: number): Promise<string> {
   return new Promise<string>((resolveBody, reject) => {
+    let bytes = 0;
     let body = "";
-    request.on("data", (chunk) => (body += chunk));
-    request.on("end", () => resolveBody(body));
-    request.on("error", reject);
+    let aborted = false;
+    request.on("data", (chunk) => {
+      if (aborted) return;
+      bytes += (chunk as Buffer).length;
+      if (bytes > maxBytes) {
+        aborted = true;
+        // Drain remaining data without buffering it.
+        body += chunk.subarray(0, Math.max(0, maxBytes - (bytes - (chunk as Buffer).length)));
+        request.removeAllListeners("data");
+        request.on("data", () => {});
+        request.on("end", () => reject(new ResponseError(413, `Request body too large (>${maxBytes} bytes)`)));
+        request.on("error", (err) => reject(new ResponseError(413, `Request body too large or read failed`)));
+        return;
+      }
+      body += chunk;
+    });
+    request.on("end", () => {
+      if (!aborted) resolveBody(body);
+    });
+    request.on("error", (err) => {
+      if (aborted) return;
+      reject(err);
+    });
   });
+}
+
+/** Safe JSON parse that returns a 400 `ResponseError` on parse failure. */
+function parseBody(raw: string): unknown {
+  if (raw === "") return {};
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new ResponseError(400, `Invalid JSON body — ${msg.slice(0, 200)}`);
+  }
 }
 
 function send(response: ServerResponse, status: number, data: unknown, corsOrigin: string) {
@@ -29,7 +64,7 @@ function send(response: ServerResponse, status: number, data: unknown, corsOrigi
   response.end(JSON.stringify(data, null, 2));
 }
 
-function buildHandler(corsOrigin: string) {
+function buildHandler(corsOrigin: string, maxBodyBytes: number) {
   const config = getConfig();
   const jsonHeaders = {
     "content-type": "application/json; charset=utf-8",
@@ -83,7 +118,7 @@ function buildHandler(corsOrigin: string) {
       if (path === "/api/runs" && request.method === "GET")
         return send(response, 200, { data: repository.listRuns(Number(url.searchParams.get("limit") || 25)) }, corsOrigin);
       if (path === "/api/runs" && request.method === "POST") {
-        const raw = JSON.parse((await readBody(request)) || "{}");
+        const raw = parseBody(await readBody(request, maxBodyBytes)) as Record<string, unknown>;
         const started = await startWorkflowRun(raw);
         return send(response, 201, started, corsOrigin);
       }
@@ -112,7 +147,7 @@ function buildHandler(corsOrigin: string) {
       }
 
       if (path === "/api/credentials" && request.method === "POST") {
-        const raw = JSON.parse((await readBody(request)) || "{}");
+        const raw = parseBody(await readBody(request, maxBodyBytes)) as Record<string, unknown>;
         const wsId = String(raw.workspaceId || "");
         const label = String(raw.credentialLabel || "").trim() || "Miro OAuth credential";
         const scopes = Array.isArray(raw.scopes) ? raw.scopes.map((s: unknown) => String(s)) : ["board:read", "board:write"];
@@ -185,7 +220,9 @@ function buildHandler(corsOrigin: string) {
       return send(response, 404, { error: "Not found" }, corsOrigin);
     } catch (error) {
       if (error instanceof ResponseError) return send(response, error.status, { error: error.message }, corsOrigin);
-      return send(response, 500, { error: error instanceof Error ? error.message : String(error) }, corsOrigin);
+      // Log full error server-side; return a sanitized generic message to the client.
+      console.error("[api] unhandled error:", error);
+      return send(response, 500, { error: "Internal server error" }, corsOrigin);
     }
   };
 }
@@ -199,9 +236,11 @@ export async function startServer(options: StartServerOptions = {}): Promise<Ser
   const config = getConfig();
   const port = options.port ?? config.port;
   const corsOrigin = options.corsOrigin ?? config.corsOrigin;
-  const handler = buildHandler(corsOrigin);
-  return new Promise<Server>((resolve) => {
+  const maxBodyBytes = options.maxBodyBytes ?? 1_048_576; // 1 MiB
+  const handler = buildHandler(corsOrigin, maxBodyBytes);
+  return new Promise<Server>((resolve, reject) => {
     const server = createServer(handler);
+    server.once("error", reject);
     server.listen(port, () => resolve(server));
   });
 }

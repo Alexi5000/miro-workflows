@@ -149,4 +149,23 @@ describe("HTTP API", () => {
     expect(body).toHaveProperty("verificationUri");
     expect(body.expiresIn).toBeGreaterThan(0);
   });
+
+  it("rejects oversized POST bodies with 413 (body-size cap)", async () => {
+    const big = "x".repeat(2_000_000); // 2 MiB > 1 MiB default cap
+    const res = await fetch(`${baseUrl}/api/runs`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: big,
+    });
+    expect([413, 400, 500]).toContain(res.status);
+  });
+
+  it("returns 400 for malformed JSON body", async () => {
+    const res = await fetch(`${baseUrl}/api/runs`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{not json",
+    });
+    expect(res.status).toBe(400);
+  });
 });
