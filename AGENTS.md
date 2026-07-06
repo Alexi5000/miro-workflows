@@ -37,6 +37,8 @@ server. **Demo-first by default**, live Miro activates only when
 | `pnpm run dev:web` | Web dashboard on `:5173` (proxies `/api` → API). |
 | `pnpm run typecheck` | Strict TS check, 0 errors required. |
 | `pnpm run test` | Vitest unit + integration suite (server + contracts + agents). |
+| `pnpm run test:ui` | React render tests in jsdom (App routes). |
+| `pnpm run test:all` | Both configs sequentially. |
 | `pnpm run coverage` | Vitest with `@vitest/coverage-v8`. |
 | `pnpm run contracts:check` | Assert sprint / audit / run contracts are monotonic. |
 | `pnpm run contracts:build` | Emit JSON-Schema artifacts. |
@@ -44,7 +46,7 @@ server. **Demo-first by default**, live Miro activates only when
 | `pnpm run agent:run -- "task"` | Run the three-agent harness end-to-end (offline stub). |
 | `pnpm run validate` | File + seed sanity check. |
 | `pnpm run smoke` | End-to-end workflow + sync in demo mode. |
-| `pnpm run ci` | typecheck + contracts:check + test + smoke + validate. |
+| `pnpm run ci` | typecheck + contracts:check + test + test:ui + smoke + validate. |
 | `pnpm run build` | Build web + API + MCP packages. |
 | `pnpm run mcp:dev` | Run the MCP server in dev. |
 | `pnpm run mcp:test` | Run the MCP package vitest suite. |
