@@ -79,4 +79,74 @@ describe("HTTP API", () => {
     expect(Array.isArray(body.data)).toBe(true);
     expect(body.data.length).toBeGreaterThan(0);
   });
+
+  it("GET /api/workspaces returns the seeded workspace + credentials envelope", async () => {
+    const res = await fetch(`${baseUrl}/api/workspaces`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.data)).toBe(true);
+    expect(body.data[0].id).toBe(seedWorkspaces[0].id);
+    expect(Array.isArray(body.credentials)).toBe(true);
+  });
+
+  it("GET /api/boards/:id/items returns items for the board from prior runs", async () => {
+    // First run a sprint so we have an item to surface.
+    await fetch(`${baseUrl}/api/runs`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ templateSlug: "sprint-retro-system" }),
+    });
+    const boards = await (await fetch(`${baseUrl}/api/boards`)).json();
+    const boardId = boards.data[0].id;
+    const res = await fetch(`${baseUrl}/api/boards/${boardId}/items`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.board.id).toBe(boardId);
+    expect(Array.isArray(body.data)).toBe(true);
+  });
+
+  it("GET /api/boards/:id/items returns 404 for unknown board", async () => {
+    const res = await fetch(`${baseUrl}/api/boards/does-not-exist/items`);
+    expect(res.status).toBe(404);
+  });
+
+  it("POST /api/credentials inserts + lists + revokes a credential", async () => {
+    const workspaces = await (await fetch(`${baseUrl}/api/workspaces`)).json();
+    const wsId = workspaces.data[0].id;
+    const createRes = await fetch(`${baseUrl}/api/credentials`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId: wsId, credentialLabel: "Test OAuth credential", scopes: ["board:read"] }),
+    });
+    expect(createRes.status).toBe(201);
+    const created = await createRes.json();
+    expect(created).toBeDefined();
+    expect(created.credential).toBeTruthy();
+    expect(created.credential?.credentialLabel).toBe("Test OAuth credential");
+    const listRes = await fetch(`${baseUrl}/api/workspaces`);
+    const list = await listRes.json();
+    expect(list.credentials.length).toBeGreaterThan(0);
+    const delRes = await fetch(`${baseUrl}/api/credentials/${created.credential.id}`, { method: "DELETE" });
+    expect(delRes.status).toBe(200);
+  });
+
+  it("POST /api/credentials rejects a missing workspaceId with 400", async () => {
+    const res = await fetch(`${baseUrl}/api/credentials`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ credentialLabel: "x" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /api/workspaces/:id/oauth/device-code returns a user code + verification URI", async () => {
+    const workspaces = await (await fetch(`${baseUrl}/api/workspaces`)).json();
+    const wsId = workspaces.data[0].id;
+    const res = await fetch(`${baseUrl}/api/workspaces/${wsId}/oauth/device-code`, { method: "POST" });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toHaveProperty("userCode");
+    expect(body).toHaveProperty("verificationUri");
+    expect(body.expiresIn).toBeGreaterThan(0);
+  });
 });

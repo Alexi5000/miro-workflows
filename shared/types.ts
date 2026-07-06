@@ -22,6 +22,8 @@ export interface IntegrationCredential {
   scopes: string[];
   expiresAt: string | null;
   status: ResourceStatus;
+  /** True when the credential is configured via OAuth device flow (vs env). */
+  fromOAuthDeviceFlow?: boolean;
 }
 
 export interface Board {

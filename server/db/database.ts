@@ -85,7 +85,16 @@ function mapWorkspace(row: any): Workspace {
   return { id: row.id, name: row.name, slug: row.slug, provider: row.provider, mode: row.mode, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at };
 }
 function mapCredential(row: any): IntegrationCredential {
-  return { id: row.id, workspaceId: row.workspace_id, provider: row.provider, credentialLabel: row.credential_label, scopes: parse(row.scopes_json, [] as string[]), expiresAt: row.expires_at || null, status: row.status };
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    provider: row.provider,
+    credentialLabel: row.credential_label,
+    scopes: parse(row.scopes_json, [] as string[]),
+    expiresAt: row.expires_at || null,
+    status: row.status,
+    fromOAuthDeviceFlow: false,
+  };
 }
 function mapBoard(row: any): Board {
   return { id: row.id, workspaceId: row.workspace_id, providerBoardId: row.provider_board_id, name: row.name, description: row.description, viewLink: row.view_link, status: row.status, lastSyncedAt: row.last_synced_at, createdAt: row.created_at };

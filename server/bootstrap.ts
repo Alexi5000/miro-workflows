@@ -101,6 +101,81 @@ function buildHandler(corsOrigin: string) {
       if (path === "/api/sync/boards" && request.method === "POST")
         return send(response, 200, { data: await syncBoards() }, corsOrigin);
 
+      if (path.startsWith("/api/boards/") && path.endsWith("/items") && request.method === "GET") {
+        const boardId = decodeURIComponent(path.split("/")[3] || "");
+        const board = repository.getBoard(boardId);
+        if (!board) return send(response, 404, { error: "Board not found" }, corsOrigin);
+        const allRuns = repository.listRuns(50);
+        const matching = allRuns.filter((r) => r.boardId === boardId);
+        const items = matching.flatMap((r) => repository.listBoardItems(r.id));
+        return send(response, 200, { data: items, board }, corsOrigin);
+      }
+
+      if (path === "/api/credentials" && request.method === "POST") {
+        const raw = JSON.parse((await readBody(request)) || "{}");
+        const wsId = String(raw.workspaceId || "");
+        const label = String(raw.credentialLabel || "").trim() || "Miro OAuth credential";
+        const scopes = Array.isArray(raw.scopes) ? raw.scopes.map((s: unknown) => String(s)) : ["board:read", "board:write"];
+        const expiresAt = typeof raw.expiresAt === "string" ? raw.expiresAt : new Date(Date.now() + 3600_000).toISOString();
+        if (!wsId) return send(response, 400, { error: "workspaceId required" }, corsOrigin);
+        const workspace = repository.listWorkspaces().find((w) => w.id === wsId);
+        if (!workspace) return send(response, 404, { error: "Workspace not found" }, corsOrigin);
+        const record = {
+          id: `cred-${crypto.randomUUID()}`,
+          workspaceId: wsId,
+          provider: "miro" as const,
+          credentialLabel: label,
+          scopes,
+          expiresAt,
+          status: "connected" as const,
+          fromOAuthDeviceFlow: true,
+        };
+        await repository.upsertCredential(record);
+        await repository.createAuditEvent({
+          workspaceId: wsId,
+          runId: null,
+          eventType: "credential.added",
+          severity: "info",
+          message: `Credential '${label}' added for workspace ${workspace.name}.`,
+          metadata: { credentialLabel: label, scopes },
+        });
+        return send(response, 201, { credential: record, deviceFlow: null }, corsOrigin);
+      }
+      if (path.startsWith("/api/credentials/") && request.method === "DELETE") {
+        // Demo: we keep audit-only metadata; deletion is a no-op + audit row.
+        const id = decodeURIComponent(path.split("/").pop() || "");
+        await repository.createAuditEvent({
+          workspaceId: repository.listWorkspaces()[0]?.id || "ws-demo",
+          runId: null,
+          eventType: "credential.revoked",
+          severity: "warning",
+          message: `Credential ${id} revoked from dashboard.`,
+          metadata: { credentialId: id },
+        });
+        return send(response, 200, { ok: true }, corsOrigin);
+      }
+
+      if (path.match(/^\/api\/workspaces\/[^/]+\/oauth\/device-code$/) && request.method === "POST") {
+        const workspaceId = decodeURIComponent(path.split("/")[3] || "");
+        // OAuth device flow stub: in production this is a remote call to
+        // Miro's `/oauth/device/code` endpoint. In demo mode we return a
+        // plausible shape so the UI can show the user-code / verification URI.
+        const userCode = `${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+        await repository.createAuditEvent({
+          workspaceId,
+          runId: null,
+          eventType: "oauth.device_flow.started",
+          severity: "info",
+          message: `OAuth device-flow started for workspace ${workspaceId}.`,
+          metadata: { userCode },
+        });
+        return send(response, 200, {
+          userCode,
+          verificationUri: "https://miro.com/oauth/device",
+          expiresIn: 600,
+        }, corsOrigin);
+      }
+
       const distPath = resolve("dist", path === "/" ? "index.html" : path.slice(1));
       if (existsSync(distPath)) {
         response.writeHead(200, { "content-type": mimeTypes[extname(distPath)] || "application/octet-stream" });
