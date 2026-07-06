@@ -123,7 +123,7 @@ function round_(n: number): number {
  * used by the harness. The "plateau input" is the composite of all axes
  * using the same weights the offline grader uses by default.
  */
-export function gragerStream(): (s: GraderScores) => number {
+export function graderStream(): (s: GraderScores) => number {
   const w = { correctness: 0.4, safety: 0.2, completeness: 0.3, quality: 0.1 };
   return (s) => s.correctness * w.correctness + s.safety * w.safety + s.completeness * w.completeness + s.quality * w.quality;
 }

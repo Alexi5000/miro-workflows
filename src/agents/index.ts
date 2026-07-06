@@ -11,7 +11,7 @@ export {
 } from "./grader.js";
 export {
   withPlateauDetection,
-  gragerStream,
+  graderStream,
   type PlateauOptions,
   type PlateauObservation,
   type PlateauResult,

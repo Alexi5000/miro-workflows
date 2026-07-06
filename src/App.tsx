@@ -343,10 +343,13 @@ export function App() {
   const [selectedRun, setSelectedRun] = useState<RunDetail | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // True after the first dashboard load completes. Gates the global loading
+  // skeleton so subsequent refreshes don't blank the UI.
+  const [initialLoaded, setInitialLoaded] = useState(false);
 
   async function load(includeWorkspaces = false) {
     try {
-      setState("loading");
+      if (!initialLoaded) setState("loading");
       const [s, t, b, r, a] = await Promise.all([api.summary(), api.templates(), api.boards(), api.runs(), api.auditEvents()]);
       setSummary(s);
       setTemplates(t.data);
@@ -355,6 +358,7 @@ export function App() {
       setAuditEvents(a.data);
       if (includeWorkspaces) await loadWorkspaces();
       setState("ready");
+      setInitialLoaded(true);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -372,17 +376,23 @@ export function App() {
     }
   }
 
-  useEffect(() => { void load(); }, []);
+  // Bootstrap once on mount.
+  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
-  // Whenever the route is a workspace-scoped view, load workspace data.
+  // React to route changes after the initial load.
   useEffect(() => {
-    if (route.pattern === "/workspaces" || route.pattern === "/credentials") {
-      void loadWorkspaces();
-    }
     // navigate from / to /dashboard for clarity
     if (route.pattern === "/" && typeof window !== "undefined") {
       navigate("/dashboard");
+      return;
     }
+    if (route.pattern === "/workspaces" || route.pattern === "/credentials") {
+      void loadWorkspaces();
+    }
+    if (route.pattern === "/boards/:id" && matched.params.id) {
+      // BoardDetailView fetches its own data; nothing to preload.
+    }
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [route.pattern]);
 
   async function runWorkflow(templateSlug: string, boardId: string) {
@@ -390,7 +400,10 @@ export function App() {
       setBusyAction(templateSlug);
       const detail = await api.startRun(templateSlug, boardId);
       setSelectedRun(detail);
+      // Re-fetch the dashboard metadata but KEEP the freshly-returned run detail
+      // by setting it AFTER the load() that we don't want to clobber it.
       await load();
+      setSelectedRun(detail);
     } catch (err) { setError(err instanceof Error ? err.message : String(err)); } finally { setBusyAction(null); }
   }
 
@@ -408,7 +421,7 @@ export function App() {
     <div className="app-shell">
       <Sidebar active={matched.pattern ?? "/dashboard"} />
       <main className="app-main" data-testid="app-main">
-        {state === "loading" && !summary && <div className="loading">Loading workflow command center…</div>}
+        {!initialLoaded && state === "loading" && <div className="loading" data-testid="initial-loading">Loading workflow command center…</div>}
         {error && <div className="error-banner" data-testid="global-error">{error}</div>}
         {matched.pattern === "/dashboard" && (
           <DashboardView
