@@ -1,0 +1,36 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    commit-message:
+      prefix: "deps"
+    labels:
+      - "dependencies"
+  - package-ecosystem: "npm"
+    directory: "/miro-custom-mcp/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    commit-message:
+      prefix: "deps(mcp)"
+    labels:
+      - "dependencies"
+  - package-ecosystem: "github-actions"
+    directory: "/.github/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "ci"
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "docker"
+    labels:
+      - "docker"

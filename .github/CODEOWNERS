@@ -1,0 +1,30 @@
+# Default owners for everything.
+/.github/                     @alexi5000
+/AGENTS.md                    @alexi5000
+/ROADMAP.md                   @alexi5000
+/SECURITY.md                  @alexi5000
+/CONTRIBUTING.md              @alexi5000
+/docker-compose.yml           @alexi5000
+/Dockerfile.*                 @alexi5000
+
+# Server / shared contracts.
+/server/                       @alexi5000
+/shared/                       @alexi5000
+/scripts/bench.ts              @alexi5000
+
+# MCP surface.
+/miro-custom-mcp/             @alexi5000
+
+# Three-agent harness + UI agents.
+/src/agents/                   @alexi5000
+/notebooks/                   @alexi5000
+/.agents/                     @alexi5000
+
+# Dashboard UI.
+src/App.tsx                   @alexi5000
+src/api.ts                    @alexi5000
+src/lib/router.ts             @alexi5000
+/src/styles.css               @alexi5000
+
+# Docs.
+/docs/                        @alexi5000
