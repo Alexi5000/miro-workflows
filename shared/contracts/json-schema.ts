@@ -1,19 +1,28 @@
 /**
- * Hand-rolled JSON-Schema emitter for our sprint contracts.
- * Avoids adding `zod-to-json-schema` as a runtime dep — we only emit
- * three shapes, and they are stable.
+ * shared/contracts/json-schema.ts — JSON-Schema emitter via `zod-to-json-schema`.
  *
- * Output conforms to JSON Schema Draft 2020-12 (subset).
+ * The previous hand-rolled emitter was removed; we now use the well-tested
+ * upstream package and add our own envelope (id, title, additionalProperties).
  */
+import { zodToJsonSchema } from "zod-to-json-schema";
+import type { ZodTypeAny } from "zod";
 import {
   SPRINT_CONTRACT_VERSION,
+  AUDIT_CONTRACT_VERSION,
   sprintContractV1,
   auditEventContractV1,
-  AUDIT_CONTRACT_VERSION,
+  runResultContractV1,
+  issueTokenContractV1,
+  startRunContractV1,
+  upsertCredentialContractV1,
+  listRunsQueryContractV1,
+  listAuditQueryContractV1,
+  issueAuthTokenContractV1,
+  workspaceIdPathContractV1,
+  AUTH_CONTRACT_VERSION,
 } from "./index.js";
-import type { z } from "zod";
 
-interface JsonSchema {
+export interface JsonSchema {
   $schema: string;
   $id: string;
   title: string;
@@ -23,107 +32,27 @@ interface JsonSchema {
   properties: Record<string, unknown>;
 }
 
-interface StringDef { typeName: "ZodString"; minLength?: number; default?: unknown }
-interface NumberDef { typeName: "ZodNumber" }
-interface EnumDef { typeName: "ZodEnum"; values: readonly string[] }
-interface NullDef { typeName: "ZodNull" }
-interface RecordDef { typeName: "ZodRecord" }
-interface ObjectDef { typeName: "ZodObject"; shape: Record<string, ZodLike> }
-interface OptionalDef { typeName: "ZodOptional"; innerType: ZodLike }
-interface DefaultDef { typeName: "ZodDefault"; innerType: ZodLike; defaultValue: () => unknown }
-interface NullableDef { typeName: "ZodNullable"; innerType: ZodLike }
-interface UnknownDef { typeName: string }
-
-interface ZodLike {
-  _def: StringDef | NumberDef | EnumDef | NullDef | RecordDef | ObjectDef | OptionalDef | DefaultDef | NullableDef | UnknownDef;
-  isOptional?: () => boolean;
-}
-
-function nameOf(z: ZodLike): string {
-  return (z._def as UnknownDef).typeName ?? "Unknown";
-}
-
-function inner(z: ZodLike): ZodLike {
-  const def = z._def as OptionalDef | DefaultDef | NullableDef;
-  if (def.innerType) return def.innerType;
-  throw new Error(`Cannot extract inner type from ${nameOf(z)}`);
-}
-
-function emitType(z: ZodLike): Record<string, unknown> {
-  const n = nameOf(z);
-  if (n === "ZodString") {
-    const def = z._def as StringDef;
-    const schema: Record<string, unknown> = { type: "string" };
-    if (typeof def.minLength === "number") schema.minLength = def.minLength;
-    if (typeof def.default !== "undefined") schema.default = def.default;
-    return schema;
-  }
-  if (n === "ZodNumber") return { type: "number" };
-  if (n === "ZodEnum") {
-    const def = z._def as EnumDef;
-    return { type: "string", enum: [...def.values] };
-  }
-  if (n === "ZodNull") return { type: "null" };
-  if (n === "ZodRecord") return { type: "object", additionalProperties: true };
-  if (n === "ZodObject") {
-    const def = z._def as ObjectDef;
-    return emitObject(def.shape, "inner", "inner") as unknown as Record<string, unknown>;
-  }
-  if (n === "ZodOptional" || n === "ZodDefault" || n === "ZodNullable") {
-    return emitType(inner(z));
-  }
-  if (n === "ZodUnknown" || n === "ZodAny") {
-    return {};
-  }
-  return {};
-}
-
-function emitObject(shape: Record<string, ZodLike>, id: string, title: string): JsonSchema {
-  const required: string[] = [];
-  const properties: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(shape)) {
-    const n = nameOf(value);
-    // ZodOptional → truly optional; ZodDefault → required (has a default).
-    const optional = n === "ZodOptional";
-    if (!optional) required.push(key);
-    properties[key] = emitType(value);
-  }
-
+function envelope<S extends ZodTypeAny>(schema: S, id: string, title: string): JsonSchema {
+  const inner = zodToJsonSchema(schema, { target: "jsonSchema7" }) as Record<string, unknown>;
+  const required = typeof inner.required === "string" ? [inner.required] : Array.isArray(inner.required) ? (inner.required as string[]) : undefined;
   return {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     $id: id,
     title,
     type: "object",
     additionalProperties: false,
-    required: required.length ? required : undefined,
-    properties,
+    required,
+    properties: (inner.properties as Record<string, unknown>) ?? {},
   };
 }
 
-function asZodLike(schema: z.ZodTypeAny): ZodLike {
-  return schema as unknown as ZodLike;
-}
-
-export function buildSprintJsonSchema(): JsonSchema {
-  const schema = sprintContractV1 as unknown as { shape: Record<string, ZodLike> };
-  return emitObject(
-    schema.shape,
-    `https://miro-workflows.dev/contracts/sprint.v${SPRINT_CONTRACT_VERSION}.json`,
-    `MiroWorkflows.Sprint.v${SPRINT_CONTRACT_VERSION}`,
-  );
-}
-
-export function buildAuditJsonSchema(): JsonSchema {
-  const schema = auditEventContractV1 as unknown as { shape: Record<string, ZodLike> };
-  return emitObject(
-    schema.shape,
-    `https://miro-workflows.dev/contracts/audit.v${AUDIT_CONTRACT_VERSION}.json`,
-    `MiroWorkflows.AuditEvent.v${AUDIT_CONTRACT_VERSION}`,
-  );
-}
-
-// Touch helper so esbuild keeps the unused import path live (used by build_contracts.ts).
-export function _selfCheck(): ZodLike {
-  return asZodLike(auditEventContractV1);
-}
+export const buildSprintJsonSchema = (): JsonSchema => envelope(sprintContractV1, `https://miro-workflows.dev/contracts/sprint.v${SPRINT_CONTRACT_VERSION}.json`, `MiroWorkflows.Sprint.v${SPRINT_CONTRACT_VERSION}`);
+export const buildAuditJsonSchema = (): JsonSchema => envelope(auditEventContractV1, `https://miro-workflows.dev/contracts/audit.v${AUDIT_CONTRACT_VERSION}.json`, `MiroWorkflows.AuditEvent.v${AUDIT_CONTRACT_VERSION}`);
+export const buildRunResultJsonSchema = (): JsonSchema => envelope(runResultContractV1, `https://miro-workflows.dev/contracts/run_result.v${SPRINT_CONTRACT_VERSION}.json`, `MiroWorkflows.RunResult.v${SPRINT_CONTRACT_VERSION}`);
+export const buildIssueTokenJsonSchema = (): JsonSchema => envelope(issueTokenContractV1, `https://miro-workflows.dev/contracts/issue_token.v${AUTH_CONTRACT_VERSION}.json`, `MiroWorkflows.IssueToken.v${AUTH_CONTRACT_VERSION}`);
+export const buildStartRunRequestJsonSchema = (): JsonSchema => envelope(startRunContractV1, `https://miro-workflows.dev/contracts/start_run_request.v1.json`, "MiroWorkflows.StartRunRequest.v1");
+export const buildUpsertCredentialRequestJsonSchema = (): JsonSchema => envelope(upsertCredentialContractV1, `https://miro-workflows.dev/contracts/upsert_credential_request.v1.json`, "MiroWorkflows.UpsertCredentialRequest.v1");
+export const buildListRunsQueryJsonSchema = (): JsonSchema => envelope(listRunsQueryContractV1, `https://miro-workflows.dev/contracts/list_runs_query.v1.json`, "MiroWorkflows.ListRunsQuery.v1");
+export const buildListAuditQueryJsonSchema = (): JsonSchema => envelope(listAuditQueryContractV1, `https://miro-workflows.dev/contracts/list_audit_query.v1.json`, "MiroWorkflows.ListAuditQuery.v1");
+export const buildIssueAuthTokenJsonSchema = (): JsonSchema => envelope(issueAuthTokenContractV1, `https://miro-workflows.dev/contracts/issue_auth_token.v${AUTH_CONTRACT_VERSION}.json`, `MiroWorkflows.IssueAuthToken.v${AUTH_CONTRACT_VERSION}`);
+export const buildWorkspaceIdPathJsonSchema = (): JsonSchema => envelope(workspaceIdPathContractV1, `https://miro-workflows.dev/contracts/workspace_id_path.v1.json`, "MiroWorkflows.WorkspaceIdPath.v1");
