@@ -16,7 +16,9 @@
     "typecheck": "tsc --noEmit",
     "validate": "tsx scripts/validate_setup.ts",
     "smoke": "tsx scripts/smoke_api.ts",
-    "test": "vitest run",
+    "test": "vitest run --config vitest.config.ts",
+    "test:ui": "vitest run --config vitest.dom.config.ts",
+    "test:all": "vitest run --config vitest.config.ts && vitest run --config vitest.dom.config.ts",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "contracts:build": "tsx scripts/build_contracts.ts",
@@ -26,7 +28,7 @@
     "mcp:dev": "cd miro-custom-mcp && pnpm run dev",
     "mcp:build": "cd miro-custom-mcp && pnpm run build",
     "mcp:test": "cd miro-custom-mcp && pnpm test",
-    "ci": "pnpm run typecheck && pnpm run contracts:check && pnpm run test && pnpm run smoke && pnpm run validate",
+    "ci": "pnpm run typecheck && pnpm run contracts:check && pnpm run test && pnpm run test:ui && pnpm run smoke && pnpm run validate",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down -v"
   },
@@ -54,12 +56,16 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^22.15.19",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@types/sql.js": "^1.4.9",
     "@types/supertest": "^6.0.3",
     "@vitest/coverage-v8": "^2.1.9",
+    "happy-dom": "^15.11.7",
+    "jsdom": "^25.0.1",
     "supertest": "^7.2.2",
     "tsx": "^4.19.4",
     "vitest": "^2.1.9"
