@@ -1,0 +1,20 @@
+# Dockerfile.web — multi-stage build for the React/Vite dashboard.
+#   stage1 (build): install + vite build → /app/dist
+#   stage2 (serve): nginx:alpine serving /app/dist + proxying /api to api:8787
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+COPY miro-custom-mcp/package.json miro-custom-mcp/pnpm-lock.yaml* ./miro-custom-mcp/
+RUN corepack enable && corepack prepare pnpm@10.11.1 --activate
+RUN pnpm install --frozen-lockfile --ignore-scripts
+COPY tsconfig.json vite.config.ts index.html ./
+COPY src ./src
+COPY shared ./shared
+RUN pnpm run build:web
+
+FROM nginx:alpine AS serve
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY ops/nginx/web.conf /etc/nginx/conf.d/default.conf
+EXPOSE 5173
+HEALTHCHECK --interval=30s --timeout=5s CMD wget -qO- http://localhost:5173/ || exit 1
+CMD ["nginx", "-g", "daemon off;"]

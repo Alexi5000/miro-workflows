@@ -1,0 +1,32 @@
+# Dockerfile.api — multi-stage build for the Node HTTP API.
+#   stage1 (build): install + tsc → /app/dist/server
+#   stage2 (run): node:20-alpine runtime as non-root
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+COPY miro-custom-mcp/package.json miro-custom-mcp/pnpm-lock.yaml* ./miro-custom-mcp/
+RUN corepack enable && corepack prepare pnpm@10.11.1 --activate
+RUN pnpm install --frozen-lockfile --ignore-scripts
+COPY tsconfig.json tsconfig.server.json ./
+COPY server ./server
+COPY shared ./shared
+COPY scripts ./scripts
+RUN pnpm run build:api
+
+FROM node:20-alpine AS run
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=8787
+ENV DATABASE_URL=sqlite:///data/miro-workflows.sqlite
+COPY --from=build /app/package.json /app/pnpm-lock.yaml ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist/server ./dist/server
+COPY --from=build /app/server/db/schema.sql ./server/db/schema.sql
+COPY --from=build /app/shared ./shared
+RUN addgroup -S app && adduser -S app -G app
+RUN chown -R app:app /app
+USER app
+EXPOSE 8787
+VOLUME ["/data"]
+HEALTHCHECK --interval=30s --timeout=5s CMD wget -qO- http://localhost:8787/api/health || exit 1
+CMD ["node", "dist/server/server/index.js"]

@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+dist
+coverage
+data
+.env
+.env.*
+tests
+*.log
+.git
+.github
+.cursor
+.qodo
+bun.lock
+bunfig.toml
+miro-custom-mcp/node_modules
+assets

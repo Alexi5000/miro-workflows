@@ -1,0 +1,75 @@
+# docker-compose.yml — full Miro Workflows stack.
+#
+# Bring up:    `docker compose up --build`
+# Tear down:   `docker compose down -v`
+#
+# All three services share the `miro-network` bridge. The `mcp` service
+# defaults to demo mode (no token); the `api` persists SQLite into the
+# `miro-data` named volume. Pass `.env` values to flip into live Miro mode.
+name: miro-workflows
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    image: miro-workflows/web:1.1.0
+    container_name: miro-web
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      VITE_API_BASE_URL: ""
+    ports:
+      - "5173:5173"
+    networks: [miro-network]
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: miro-workflows/api:1.1.0
+    container_name: miro-api
+    environment:
+      NODE_ENV: production
+      PORT: "8787"
+      DATABASE_URL: "sqlite:///data/miro-workflows.sqlite"
+      CORS_ORIGIN: "http://localhost:5173"
+      MIRO_PROVIDER_MODE: ${MIRO_PROVIDER_MODE:-demo}
+      MIRO_ACCESS_TOKEN: ${MIRO_ACCESS_TOKEN:-}
+    volumes:
+      - miro-data:/data
+    ports:
+      - "8787:8787"
+    networks: [miro-network]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8787/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    image: miro-workflows/mcp:1.1.0
+    container_name: miro-mcp
+    environment:
+      NODE_ENV: production
+      MIRO_PROVIDER_MODE: ${MIRO_PROVIDER_MODE:-demo}
+      MIRO_ACCESS_TOKEN: ${MIRO_ACCESS_TOKEN:-}
+    stdin_open: true
+    tty: true
+    networks: [miro-network]
+    restart: unless-stopped
+
+networks:
+  miro-network:
+    name: miro-network
+    driver: bridge
+
+volumes:
+  miro-data:
+    name: miro-data
