@@ -69,6 +69,29 @@ The API is intentionally pragmatic and easy to consume from a static React dashb
 | `GET` | `/api/runs/:id` | Returns a run with related board items and audit events. |
 | `GET` | `/api/audit-events` | Lists recent audit events for operations review. |
 | `POST` | `/api/sync/boards` | Performs a configured board sync and records an audit event. |
+| `GET` | `/api/boards/:id/items` | Per-board artifact viewer (aggregates BoardItems from all runs targeting the board). |
+| `POST` | `/api/credentials` | Attaches credential metadata to a workspace. Audited. **Never** stores the token itself. |
+| `DELETE` | `/api/credentials/:id` | Revokes a credential. Writes audit; does not delete. |
+| `POST` | `/api/workspaces/:id/oauth/device-code` | **DEMO STUB.** Returns a fake `{userCode, verificationUri, expiresIn}`. See `docs/OAUTH.md` for what production wiring looks like. |
+
+## UI routing
+
+The dashboard uses a 70-line hash router at `src/lib/router.ts` (no `react-router` dep).
+- Patterns live in `PATTERNS` (`src/App.tsx`) and may include `:id` segments.
+- `useRoute()` reads `window.location.hash`; `navigate(to)` mutates it.
+- A trailing `/` is collapsed; bare `/` redirects to `/dashboard`.
+- No server-side routing — see ADR-0005.
+- No-SSR rationale: this is an ops dashboard, never embedded in HTML email or SEO pages; the SPA proxy in `vite.config.ts` (`/api → :8787`) and `ops/nginx/web.conf` handle the production pairing.
+
+Routes:
+
+| Path | View |
+| --- | --- |
+| `#/dashboard` | KPI tiles, workflow catalog, recent runs, audit strip, run detail. |
+| `#/workspaces` | One card per workspace with credential count + Manage credentials. |
+| `#/boards` | All known boards, click to open detail. |
+| `#/boards/:id` | Per-board artifact viewer. |
+| `#/credentials` | OAuth device-flow + manual attach + revoke. |
 
 ## Provider Strategy
 

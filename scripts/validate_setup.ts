@@ -25,6 +25,7 @@ async function main() {
     "docs/TESTING.md",
     "docs/MCP-TOOLS.md",
     "docs/SKILLS.md",
+    "docs/OAUTH.md",
     "docs/adr/README.md",
     "docs/adr/0001-demo-first-default.md",
     "docs/adr/0006-three-agent-harness.md",

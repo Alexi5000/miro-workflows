@@ -70,6 +70,8 @@ MIRO_PROVIDER_MODE=miro MIRO_ACCESS_TOKEN=your-token pnpm run dev:api
 
 The current provider uses the token for board sync. Workflow execution remains safe to run in demo style until team-specific write operations are expanded and approved.
 
+> For OAuth device-flow wiring (used by the dashboard's "Start flow for {workspace}" button), see [`docs/OAUTH.md`](OAUTH.md). Today the dashboard's button exercises a **demo stub**; live Miro OAuth requires `MIRO_CLIENT_ID`, `MIRO_CLIENT_SECRET`, and `MIRO_REDIRECT_URL` plus a server-side `/v1/oauth/token` poller.
+
 ## Production build
 
 Run all production checks and builds.

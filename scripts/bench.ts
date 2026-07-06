@@ -23,7 +23,7 @@ import { gradeArtifact } from "../src/agents/grader.js";
 import type { Model } from "../src/agents/types.js";
 import { bootstrapServerForBench } from "./helpers/bench-server.js";
 
-const ITERATIONS = Number(process.env.BENCH_ITER ?? 10);
+const ITERATIONS = Math.max(1, Number(process.env.BENCH_ITER ?? 20));
 
 interface BenchRow {
   name: string;
