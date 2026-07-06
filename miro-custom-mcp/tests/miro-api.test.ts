@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { MiroApiClient, MiroAuthError, MiroRateLimitError } from "../src/miro-api.js";
+import { MiroApiClient, MiroAuthError, MiroRateLimitError, parseRetryAfter } from "../src/miro-api.js";
 
 class FakeResponse {
   status: number;
@@ -52,6 +52,37 @@ describe("MiroApiClient — auth/rate/error mapping", () => {
   it("rejects empty/placeholder tokens at construction", () => {
     expect(() => new MiroApiClient("")).toThrow(/MIRO_ACCESS_TOKEN/);
     expect(() => new MiroApiClient("your_token_here")).toThrow(/MIRO_ACCESS_TOKEN/);
+  });
+});
+
+describe("parseRetryAfter", () => {
+  const now = Date.parse("2026-07-06T00:00:00Z");
+
+  it("returns 0 for missing or empty values", () => {
+    expect(parseRetryAfter(null, now)).toBe(0);
+    expect(parseRetryAfter(undefined, now)).toBe(0);
+    expect(parseRetryAfter("", now)).toBe(0);
+    expect(parseRetryAfter("   ", now)).toBe(0);
+  });
+
+  it("parses delta-seconds as ms", () => {
+    expect(parseRetryAfter("30", now)).toBe(30_000);
+    expect(parseRetryAfter("0.5", now)).toBe(500);
+    expect(parseRetryAfter("0", now)).toBe(0);
+  });
+
+  it("clamps negative deltas to 0", () => {
+    expect(parseRetryAfter("-5", now)).toBe(0);
+  });
+
+  it("parses HTTP-date as ms-until-now", () => {
+    const future = "Wed, 08 Jul 2026 00:00:00 GMT";
+    const ms = parseRetryAfter(future, now);
+    expect(ms).toBe(2 * 24 * 60 * 60 * 1000);
+  });
+
+  it("returns 0 for unparseable values", () => {
+    expect(parseRetryAfter("not a number or date", now)).toBe(0);
   });
 });
 

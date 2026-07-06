@@ -152,6 +152,29 @@ export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Parse the `Retry-After` header per RFC 7231.
+ *  - Numeric (delta-seconds, integer or float): multiplied by 1000.
+ *  - HTTP-date: difference vs. Date.now() in milliseconds.
+ *  - Anything else / absent: 0.
+ *  - Negative values clamp to 0.
+ */
+export function parseRetryAfter(raw: string | null | undefined, now: number = Date.now()): number {
+  if (!raw) return 0;
+  const trimmed = raw.trim();
+  if (!trimmed) return 0;
+  // Numeric.
+  if (/^\d+(\.\d+)?$/.test(trimmed)) {
+    return Math.max(0, Math.floor(Number(trimmed) * 1000));
+  }
+  // HTTP-date.
+  const ts = Date.parse(trimmed);
+  if (!Number.isNaN(ts)) {
+    return Math.max(0, ts - now);
+  }
+  return 0;
+}
+
 export class MiroApiClient implements MiroApiClientLike {
   private readonly access_token: string;
   private readonly opts: Required<MiroApiClientOptions>;
@@ -195,8 +218,7 @@ export class MiroApiClient implements MiroApiClientLike {
           throw new MiroAuthError(`Miro API unauthorized (401)`);
         }
         if (response.status === 429) {
-          const retryAfterHeader = response.headers.get("retry-after");
-          const retryAfterMs = retryAfterHeader ? Math.max(0, Number(retryAfterHeader) * 1000) : 0;
+          const retryAfterMs = parseRetryAfter(response.headers.get("retry-after"));
           const backoff = Math.min(this.opts.maxDelayMs, this.opts.baseDelayMs * 2 ** attempt) + Math.floor(Math.random() * 100);
           if (attempt < this.opts.maxRetries) {
             await delay(Math.max(retryAfterMs, backoff));
