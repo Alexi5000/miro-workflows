@@ -15,14 +15,14 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: false,
-    include: ["tests/**/*.test.ts", "shared/**/*.test.ts", "server/**/*.test.ts", "scripts/**/*.test.ts"],
+    include: ["tests/**/*.test.ts", "shared/**/*.test.ts", "server/**/*.test.ts", "scripts/**/*.test.ts", "src/agents/**/*.test.ts"],
     setupFiles: ["tests/setup.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "text-summary", "html"],
       reportsDirectory: "./coverage",
-      include: ["server/services/**/*.ts", "server/providers/**/*.ts", "server/config.ts", "server/db/database.ts", "shared/contracts/**/*.ts", "scripts/check_contract_versions.ts", "scripts/build_contracts.ts"],
-      exclude: ["**/*.test.ts", "**/*.d.ts", "**/types.ts"],
+      include: ["server/services/**/*.ts", "server/providers/**/*.ts", "server/config.ts", "server/db/database.ts", "shared/contracts/**/*.ts", "scripts/check_contract_versions.ts", "scripts/build_contracts.ts", "src/agents/**/*.ts"],
+      exclude: ["**/*.test.ts", "**/*.d.ts", "**/types.ts", "src/agents/cli.ts", "src/agents/prompts/**/*.ts"],
       thresholds: {
         lines: 80,
         functions: 80,
