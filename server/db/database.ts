@@ -3,11 +3,13 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type {
   AuditEvent,
+  AuthToken,
   Board,
   BoardItem,
   DashboardSummary,
   IntegrationCredential,
   RunDetail,
+  WebhookDelivery,
   WorkflowRun,
   WorkflowRunMetrics,
   WorkflowTemplate,
@@ -60,6 +62,7 @@ const parse = <T>(value: string | null | undefined, fallback: T): T =>
 const json = (value: unknown) => JSON.stringify(value ?? null);
 const now = () => new Date().toISOString();
 const id = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
+const random8 = () => crypto.randomUUID().replace(/-/g, "").slice(0, 16);
 
 function all(sql: string, params: unknown[] = []) {
   if (!_module) throw new Error("Repository not initialized — call initRepository() first.");
@@ -115,6 +118,21 @@ function mapItem(row: any): BoardItem {
 }
 function mapAudit(row: any): AuditEvent {
   return { id: row.id, workspaceId: row.workspace_id, runId: row.run_id || null, eventType: row.event_type, severity: row.severity, message: row.message, metadata: parse(row.metadata_json, {}), createdAt: row.created_at };
+}
+function mapAuthToken(row: any): AuthToken {
+  return {
+    id: row.id, workspaceId: row.workspace_id, label: row.label, prefix: row.prefix,
+    digest: row.digest, scopes: parse(row.scopes_json, []), createdAt: row.created_at,
+    expiresAt: row.expires_at, lastUsedAt: row.last_used_at, revokedAt: row.revoked_at,
+    createdBy: row.created_by,
+  };
+}
+function mapWebhook(row: any): WebhookDelivery {
+  return {
+    id: row.id, source: row.source, externalId: row.external_id, workspaceId: row.workspace_id,
+    receivedAt: row.received_at, processedAt: row.processed_at, status: row.status,
+    payload: parse(row.payload_json, {}),
+  };
 }
 
 export const repository = {
@@ -223,6 +241,65 @@ export const repository = {
       boards: this.listBoards(),
       templates: this.listTemplates(),
     };
+  },
+
+  // ---------------------------------------------------------------------------
+  // Auth tokens (bearer wall).
+  // ---------------------------------------------------------------------------
+
+  async createAuthToken(input: Pick<AuthToken, "workspaceId" | "label" | "prefix" | "digest" | "scopes" | "expiresAt" | "lastUsedAt" | "revokedAt" | "createdBy" | "createdAt"> & { id?: string }) {
+    const m = await ensureLoaded();
+    const id = input.id ?? `tok-${random8()}`;
+    m.db.run(
+      `INSERT INTO auth_tokens (id, workspace_id, label, prefix, digest, scopes_json, created_at, expires_at, last_used_at, revoked_at, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, input.workspaceId, input.label, input.prefix, input.digest, json(input.scopes), input.createdAt, input.expiresAt, input.lastUsedAt, input.revokedAt, input.createdBy],
+    );
+    m.persist();
+    return { ...input, id } as AuthToken;
+  },
+
+  async findAuthTokenByPrefix(prefix: string): Promise<AuthToken | null> {
+    const rows = all(`SELECT * FROM auth_tokens WHERE prefix = ? AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1`, [prefix]);
+    return rows.length ? mapAuthToken(rows[0]) : null;
+  },
+
+  async listAuthTokensByWorkspace(workspaceId: string): Promise<AuthToken[]> {
+    return all(`SELECT * FROM auth_tokens WHERE workspace_id = ? ORDER BY created_at DESC`, [workspaceId]).map(mapAuthToken);
+  },
+
+  async touchAuthToken(id: string): Promise<void> {
+    run(`UPDATE auth_tokens SET last_used_at = ? WHERE id = ?`, [now(), id]);
+  },
+
+  async revokeAuthToken(id: string): Promise<void> {
+    run(`UPDATE auth_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`, [now(), id]);
+  },
+
+  // ---------------------------------------------------------------------------
+  // Webhook deliveries (idempotency + dedupe).
+  // ---------------------------------------------------------------------------
+
+  async recordWebhookDelivery(input: Pick<WebhookDelivery, "source" | "externalId" | "workspaceId" | "payload"> & { id?: string; status?: WebhookDelivery["status"]; processedAt?: string | null; receivedAt?: string }): Promise<{ inserted: boolean; row: WebhookDelivery }> {
+    const id = input.id ?? `wh-${random8()}`;
+    const receivedAt = input.receivedAt ?? now();
+    const status = input.status ?? "received";
+    try {
+      const m = await ensureLoaded();
+      m.db.run(
+        `INSERT INTO webhook_deliveries (id, source, external_id, workspace_id, received_at, processed_at, status, payload_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, input.source, input.externalId, input.workspaceId, receivedAt, input.processedAt ?? null, status, json(input.payload)],
+      );
+      m.persist();
+      return { inserted: true, row: { id, source: input.source, externalId: input.externalId, workspaceId: input.workspaceId, receivedAt, processedAt: input.processedAt ?? null, status, payload: input.payload } };
+    } catch (err) {
+      const existing = all(`SELECT * FROM webhook_deliveries WHERE source = ? AND external_id = ?`, [input.source, input.externalId]);
+      if (existing.length) {
+        return { inserted: false, row: mapWebhook(existing[0]) };
+      }
+      throw err;
+    }
   },
 };
 

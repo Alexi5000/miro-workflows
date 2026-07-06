@@ -89,3 +89,38 @@ CREATE INDEX IF NOT EXISTS idx_runs_template ON workflow_runs(template_id);
 CREATE INDEX IF NOT EXISTS idx_runs_board ON workflow_runs(board_id);
 CREATE INDEX IF NOT EXISTS idx_items_run ON board_items(run_id);
 CREATE INDEX IF NOT EXISTS idx_audit_workspace ON audit_events(workspace_id);
+
+-- ---------------------------------------------------------------------------
+-- Auth tables (v1.1 production wall).
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS auth_tokens (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  label TEXT NOT NULL,
+  prefix TEXT NOT NULL,
+  digest TEXT NOT NULL,
+  scopes_json TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  last_used_at TEXT,
+  revoked_at TEXT,
+  created_by TEXT NOT NULL DEFAULT 'system'
+);
+
+CREATE INDEX IF NOT EXISTS idx_tokens_prefix ON auth_tokens(prefix);
+CREATE INDEX IF NOT EXISTS idx_tokens_workspace ON auth_tokens(workspace_id);
+
+CREATE TABLE IF NOT EXISTS webhook_deliveries (
+  id TEXT PRIMARY KEY,
+  source TEXT NOT NULL,
+  external_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  received_at TEXT NOT NULL,
+  processed_at TEXT,
+  status TEXT NOT NULL,
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  UNIQUE(source, external_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_webhook_workspace ON webhook_deliveries(workspace_id);

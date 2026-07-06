@@ -105,6 +105,33 @@ export interface AuditEvent {
   createdAt: string;
 }
 
+export interface AuthToken {
+  id: string;
+  workspaceId: string;
+  label: string;
+  /** Short public prefix (first 8 chars of plaintext) used for lookup. */
+  prefix: string;
+  /** HMAC-SHA256 digest of the plaintext. We never store the plaintext. */
+  digest: string;
+  scopes: string[];
+  createdAt: string;
+  expiresAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdBy: string;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  source: string;
+  externalId: string;
+  workspaceId: string;
+  receivedAt: string;
+  processedAt: string | null;
+  status: "received" | "processed" | "failed" | "duplicate";
+  payload: Record<string, unknown>;
+}
+
 export interface DashboardSummary {
   totals: {
     workspaces: number;

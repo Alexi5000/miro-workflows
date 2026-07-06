@@ -22,6 +22,7 @@ import { z } from "zod";
 export const SPRINT_CONTRACT_VERSION = "1.0.0" as const;
 export const AUDIT_CONTRACT_VERSION = "1.0.0" as const;
 export const RUN_RESULT_CONTRACT_VERSION = "1.0.0" as const;
+export { AUTH_CONTRACT_VERSION } from "./auth.contract.v1.js";
 
 export const SprintSeveritySchema = z.enum(["info", "warning", "error"]);
 export type SprintSeverity = z.infer<typeof SprintSeveritySchema>;
@@ -101,7 +102,45 @@ export const RUN_RESULT_CONTRACTS: Record<string, ContractDescriptor<unknown, Ru
   "1.0.0": { version: "1.0.0", schema: runResultContractV1 as unknown as z.ZodType<RunResultContractV1, z.ZodTypeDef, unknown> },
 };
 
-export type ContractKind = "sprint" | "audit" | "run_result";
+export {
+  tokenScopes,
+  issueTokenContractV1,
+  authHeaderContractV1,
+  bearerV1,
+  authVerifyContractV1,
+  authResultContractV1,
+  type TokenScope,
+  type AuthHeaderContractV1,
+  type IssueTokenContractV1,
+  type AuthVerifyResultV1,
+  type AuthResultContractV1,
+} from "./auth.contract.v1.js";
+
+export {
+  startRunContractV1,
+  upsertCredentialContractV1,
+  workspaceIdPathContractV1,
+  listRunsQueryContractV1,
+  listAuditQueryContractV1,
+  issueAuthTokenContractV1,
+  parseOrThrow,
+} from "./api.contracts.v1.js";
+
+export {
+  buildSprintJsonSchema,
+  buildAuditJsonSchema,
+  buildRunResultJsonSchema,
+  buildStartRunRequestJsonSchema,
+  buildUpsertCredentialRequestJsonSchema,
+  buildIssueAuthTokenJsonSchema,
+  buildIssueTokenJsonSchema,
+  buildWorkspaceIdPathJsonSchema,
+  buildListRunsQueryJsonSchema,
+  buildListAuditQueryJsonSchema,
+  type JsonSchema,
+} from "./json-schema.js";
+
+export type ContractKind = "sprint" | "audit" | "run_result" | "auth";
 
 export function listContractVersions(kind: ContractKind): string[] {
   const map = pickRegistry(kind);
