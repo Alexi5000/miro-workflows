@@ -22,8 +22,10 @@ server. **Demo-first by default**, live Miro activates only when
 | `scripts/` | Dev/ops scripts (validate, smoke, build, contract check). |
 | `tests/` | Vitest unit + integration tests. |
 | `.agents/skills/` | Authoring-time skills for coding agents. |
+| `src/agents/` | Three-agent harness (Planner / Generator / Evaluator) + grader + plateau. |
 | `notebooks/` | Human-authored decision logs (not imported at runtime). |
 | `docs/adr/` | Architecture Decision Records (one per load-bearing choice). |
+| `docs/BENCHMARK.md` | Honest, reproducible benchmark + helper `scripts/bench.ts`. |
 
 ## Commands (canonical)
 
@@ -34,13 +36,18 @@ server. **Demo-first by default**, live Miro activates only when
 | `pnpm run dev:api` | API dev server on `:8787`. |
 | `pnpm run dev:web` | Web dashboard on `:5173` (proxies `/api` → API). |
 | `pnpm run typecheck` | Strict TS check, 0 errors required. |
-| `pnpm run test` | Vitest unit + integration suite. |
-| `pnpm run coverage` | Vitest with `c8`/`@vitest/coverage-v8`. |
+| `pnpm run test` | Vitest unit + integration suite (server + contracts + agents). |
+| `pnpm run coverage` | Vitest with `@vitest/coverage-v8`. |
+| `pnpm run contracts:check` | Assert sprint / audit / run contracts are monotonic. |
+| `pnpm run contracts:build` | Emit JSON-Schema artifacts. |
+| `pnpm run bench` | Reproducible HTTP + harness benchmark; see `docs/BENCHMARK.md`. |
+| `pnpm run agent:run -- "task"` | Run the three-agent harness end-to-end (offline stub). |
 | `pnpm run validate` | File + seed sanity check. |
 | `pnpm run smoke` | End-to-end workflow + sync in demo mode. |
-| `pnpm run ci` | typecheck + test + smoke + validate. |
+| `pnpm run ci` | typecheck + contracts:check + test + smoke + validate. |
 | `pnpm run build` | Build web + API + MCP packages. |
 | `pnpm run mcp:dev` | Run the MCP server in dev. |
+| `pnpm run mcp:test` | Run the MCP package vitest suite. |
 | `pnpm run docker:up` | Bring up `docker-compose.yml` (web + api + mcp). |
 | `pnpm run docker:down` | Tear down the compose stack. |
 
@@ -95,6 +102,8 @@ server. **Demo-first by default**, live Miro activates only when
 - `docs/TESTING.md` — coverage policy + how to add tests.
 - `docs/SKILLS.md` — how to author `.agents/skills/*.md`.
 - `docs/MCP-TOOLS.md` — full MCP tool catalog.
+- `docs/BENCHMARK.md` — reproducible benchmark + what we did NOT measure.
+- `notebooks/` — human-authored decision logs.
 - `docs/adr/` — Architecture Decision Records.
 
 ## Troubleshooting
@@ -104,5 +113,8 @@ server. **Demo-first by default**, live Miro activates only when
   `DATABASE_PATH` was renamed. See ADR-0003.
 - **Tests hang**: ensure no live `MIRO_ACCESS_TOKEN` is exported in the test
   environment — `tests/setup.ts` clears it.
+- **Bench hangs at "seed done"**: ensure the ephemeral port pick succeeded.
+  `startServer({ port: 0 })` resolves on `listening`; if you re-wrap it with
+  `once("listening")` and the event already fired, the promise never settles.
 
-_Last revised: 2026-07-05 — Foundation PR (pillars 1, 2, 3, 8, 11, 12)._
+_Last revised: 2026-07-05 — Foundation PR #2 (added pillars 4, 5, 6, 7, 10)._

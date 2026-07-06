@@ -21,6 +21,8 @@
     "coverage": "vitest run --coverage",
     "contracts:build": "tsx scripts/build_contracts.ts",
     "contracts:check": "tsx scripts/check_contract_versions.ts",
+    "bench": "tsx scripts/bench.ts",
+    "agent:run": "tsx src/agents/cli.ts",
     "mcp:dev": "cd miro-custom-mcp && pnpm run dev",
     "mcp:build": "cd miro-custom-mcp && pnpm run build",
     "mcp:test": "cd miro-custom-mcp && pnpm test",

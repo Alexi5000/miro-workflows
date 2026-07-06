@@ -10,7 +10,9 @@
 [![Miro](https://img.shields.io/badge/Miro-ready-FFD02F?logo=miro&logoColor=050038)](https://developers.miro.com/)
 [![MCP](https://img.shields.io/badge/MCP-enabled-8D52FF)](https://modelcontextprotocol.io/)
 
-**Miro Workflows** is a production-ready TypeScript command center for turning Miro-based collaboration into repeatable workflow operations. It combines a polished React dashboard, Node.js API, SQLite-backed persistence, workflow templates, audit trails, optional live Miro sync, and a custom MCP server for agent-compatible board automation.
+**Miro Workflows** is a production-ready TypeScript command center for turning Miro-based collaboration into repeatable workflow operations. It combines a polished React dashboard, Node.js API, SQLite-backed persistence, workflow templates, audit trails, optional live Miro sync, a custom MCP server for agent-compatible board automation, a three-agent (Planner → Generator → Evaluator) planning harness with four-axis grading and plateau detection, an authoring surface of human decision-log notebooks, and an honest reproducible benchmark.
+
+> ✅ **All 12 FDE pillars are implemented** (procedural memory, skills, contracts, harness, grader, plateau, notebooks, containerization, narrative README, benchmark, ADRs, full coverage). See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and the [12-pillar skill](.agents/skills/fde-pillar-review/SKILL.md).
 
 ![Miro Workflows capability badges](assets/readme/capability-badges.svg)
 
@@ -101,7 +103,14 @@ The dashboard runs at [`http://localhost:5173`](http://localhost:5173), and the 
 | Document | Description |
 | --- | --- |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Detailed system model, schema, API contract, security posture, and deployment notes. |
-| [`docs/SETUP.md`](docs/SETUP.md) | Local development, environment variables, validation, and MCP setup. |
+| [`docs/SETUP.md`](docs/SETUP.md) | Local development, environment variables, validation, Docker, and MCP setup. |
+| [`docs/BENCHMARK.md`](docs/BENCHMARK.md) | Honest, reproducible benchmark results (HTTP API, MCP, three-agent harness). |
+| [`docs/CONTRACTS.md`](docs/CONTRACTS.md) | Typed, versioned sprint + audit + run contracts. |
+| [`docs/MCP-TOOLS.md`](docs/MCP-TOOLS.md) | Full MCP tool catalog (20 tools, boards + items + composite). |
+| [`docs/SKILLS.md`](docs/SKILLS.md) | How to author `.agents/skills/*.md`. |
+| [`docs/TESTING.md`](docs/TESTING.md) | Coverage policy + how to add tests. |
+| [`notebooks/`](notebooks/) | Human-authored decision logs (wiki-style cross-refs). |
+| [`docs/adr/`](docs/adr/) | Architecture Decision Records. |
 | [`miro-custom-mcp/README.md`](miro-custom-mcp/README.md) | Custom MCP server usage and production guidance. |
 | [`.env.example`](.env.example) | Safe defaults and optional live Miro provider configuration. |
 

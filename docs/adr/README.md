@@ -13,6 +13,7 @@ shape the codebase and would be costly to reverse. Each ADR follows the
 | [ADR-0003](0003-sql-js-for-local-dev.md) | `sql.js` for local dev, file-backed SQLite | Accepted |
 | [ADR-0004](0004-mcp-separated-from-http.md) | Custom MCP package separated from HTTP API | Accepted |
 | [ADR-0005](0005-vite-spa-no-next.md) | React + Vite single-page dashboard, not Next.js | Accepted |
+| [ADR-0006](0006-three-agent-harness.md) | Three-agent Planner → Generator → Evaluator harness | Accepted |
 
 ## Conventions
 
