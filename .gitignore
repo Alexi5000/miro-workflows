@@ -33,3 +33,12 @@ desktop.ini
 *.tmp
 temp/
 .cache/
+
+# FDE foundations (Pillar 1, 8, 12)
+coverage/
+.notebook/cache/
+.agent/
+.playwright-mcp/
+
+# Tooling: pnpm-only (bun.lock is stale)
+bun.lockb
