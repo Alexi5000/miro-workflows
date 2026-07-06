@@ -3,15 +3,19 @@
 // reference: miro-api.ts
 
 import { z } from "zod";
-import type { MiroApiClient } from "../miro-api.js";
+import type { MiroApiClientLike } from "../miro-api.js";
 
 export const delete_item_schema = z.object({
   board_id: z.string().describe("The Miro board ID"),
   item_id: z.string().describe("ID of the item to delete"),
 });
 
+export const delete_item_examples: Array<z.infer<typeof delete_item_schema>> = [
+  { board_id: "demo-board", item_id: "item-x" },
+];
+
 export async function delete_item(
-  client: MiroApiClient,
+  client: MiroApiClientLike,
   params: z.infer<typeof delete_item_schema>
 ) {
   await client.delete_item(params.board_id, params.item_id);

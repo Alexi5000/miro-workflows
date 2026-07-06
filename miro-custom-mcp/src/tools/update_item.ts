@@ -3,7 +3,7 @@
 // reference: miro-api.ts
 
 import { z } from "zod";
-import type { MiroApiClient } from "../miro-api.js";
+import type { MiroApiClientLike, UpdateItemInput } from "../miro-api.js";
 
 export const update_item_schema = z.object({
   board_id: z.string().describe("The Miro board ID"),
@@ -17,11 +17,15 @@ export const update_item_schema = z.object({
   content: z.string().optional().describe("New text content"),
 });
 
+export const update_item_examples: Array<z.infer<typeof update_item_schema>> = [
+  { board_id: "demo-board", item_id: "item-x", x: 100, y: -50, fill_color: "#9cd7fc" },
+];
+
 export async function update_item(
-  client: MiroApiClient,
+  client: MiroApiClientLike,
   params: z.infer<typeof update_item_schema>
 ) {
-  const update_params: any = {};
+  const update_params: UpdateItemInput = {};
 
   if (params.x !== undefined || params.y !== undefined) {
     update_params.position = {};

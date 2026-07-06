@@ -3,7 +3,7 @@
 // reference: miro-api.ts
 
 import { z } from "zod";
-import type { MiroApiClient } from "../miro-api.js";
+import type { MiroApiClientLike } from "../miro-api.js";
 
 export const create_card_schema = z.object({
   board_id: z.string().describe("The Miro board ID"),
@@ -15,8 +15,12 @@ export const create_card_schema = z.object({
   color: z.string().optional().describe("Card color (hex code)"),
 });
 
+export const create_card_examples: Array<z.infer<typeof create_card_schema>> = [
+  { board_id: "demo-board", title: "Implement login", description: "OAuth + JWT", x: 0, y: 0 },
+];
+
 export async function create_card(
-  client: MiroApiClient,
+  client: MiroApiClientLike,
   params: z.infer<typeof create_card_schema>
 ) {
   const result = await client.create_card(params.board_id, {

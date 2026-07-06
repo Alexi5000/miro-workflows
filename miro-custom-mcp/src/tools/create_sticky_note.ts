@@ -3,7 +3,7 @@
 // reference: miro-api.ts
 
 import { z } from "zod";
-import type { MiroApiClient } from "../miro-api.js";
+import type { MiroApiClientLike } from "../miro-api.js";
 
 export const create_sticky_note_schema = z.object({
   board_id: z.string().describe("The Miro board ID"),
@@ -17,8 +17,12 @@ export const create_sticky_note_schema = z.object({
   width: z.number().optional().describe("Width of the sticky note (default: 200)"),
 });
 
+export const create_sticky_note_examples: Array<z.infer<typeof create_sticky_note_schema>> = [
+  { board_id: "demo-board", content: "Implement search by EOW", color: "yellow", x: 0, y: 0 },
+];
+
 export async function create_sticky_note(
-  client: MiroApiClient,
+  client: MiroApiClientLike,
   params: z.infer<typeof create_sticky_note_schema>
 ) {
   // Map color names to Miro hex codes

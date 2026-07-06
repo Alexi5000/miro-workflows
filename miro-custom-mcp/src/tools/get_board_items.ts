@@ -3,7 +3,7 @@
 // reference: miro-api.ts
 
 import { z } from "zod";
-import type { MiroApiClient } from "../miro-api.js";
+import type { MiroApiClientLike } from "../miro-api.js";
 
 export const get_board_items_schema = z.object({
   board_id: z.string().describe("The Miro board ID"),
@@ -14,8 +14,12 @@ export const get_board_items_schema = z.object({
   limit: z.number().optional().describe("Maximum number of items to return (default: 50)"),
 });
 
+export const get_board_items_examples: Array<z.infer<typeof get_board_items_schema>> = [
+  { board_id: "demo-board", type: "sticky_note", limit: 25 },
+];
+
 export async function get_board_items(
-  client: MiroApiClient,
+  client: MiroApiClientLike,
   params: z.infer<typeof get_board_items_schema>
 ) {
   const result = await client.get_board_items(params.board_id, {
@@ -25,7 +29,7 @@ export async function get_board_items(
 
   return {
     success: true,
-    total_items: result.total || result.data.length,
+    total_items: result.data.length,
     items: result.data,
     message: `Retrieved ${result.data.length} items from board ${params.board_id}`,
   };

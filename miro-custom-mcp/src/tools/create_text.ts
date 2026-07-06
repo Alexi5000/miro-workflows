@@ -3,7 +3,7 @@
 // reference: miro-api.ts
 
 import { z } from "zod";
-import type { MiroApiClient } from "../miro-api.js";
+import type { MiroApiClientLike } from "../miro-api.js";
 
 export const create_text_schema = z.object({
   board_id: z.string().describe("The Miro board ID"),
@@ -16,8 +16,12 @@ export const create_text_schema = z.object({
   text_align: z.enum(["left", "center", "right"]).optional().describe("Text alignment"),
 });
 
+export const create_text_examples: Array<z.infer<typeof create_text_schema>> = [
+  { board_id: "demo-board", content: "Sprint 23 — Architecture Review", x: 0, y: -200, font_size: "24" },
+];
+
 export async function create_text(
-  client: MiroApiClient,
+  client: MiroApiClientLike,
   params: z.infer<typeof create_text_schema>
 ) {
   const result = await client.create_text(params.board_id, {

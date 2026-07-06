@@ -3,7 +3,7 @@
 // reference: miro-api.ts
 
 import { z } from "zod";
-import type { MiroApiClient } from "../miro-api.js";
+import type { MiroApiClientLike } from "../miro-api.js";
 
 export const create_frame_schema = z.object({
   board_id: z.string().describe("The Miro board ID"),
@@ -15,8 +15,12 @@ export const create_frame_schema = z.object({
   fill_color: z.string().optional().describe("Background color (hex code)"),
 });
 
+export const create_frame_examples: Array<z.infer<typeof create_frame_schema>> = [
+  { board_id: "demo-board", title: "Backlog", x: 0, y: 0, width: 600, height: 800 },
+];
+
 export async function create_frame(
-  client: MiroApiClient,
+  client: MiroApiClientLike,
   params: z.infer<typeof create_frame_schema>
 ) {
   const result = await client.create_frame(params.board_id, {

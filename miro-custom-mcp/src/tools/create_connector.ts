@@ -3,7 +3,7 @@
 // reference: miro-api.ts
 
 import { z } from "zod";
-import type { MiroApiClient } from "../miro-api.js";
+import type { MiroApiClientLike } from "../miro-api.js";
 
 export const create_connector_schema = z.object({
   board_id: z.string().describe("The Miro board ID"),
@@ -17,8 +17,12 @@ export const create_connector_schema = z.object({
   caption: z.string().optional().describe("Text label on the connector"),
 });
 
+export const create_connector_examples: Array<z.infer<typeof create_connector_schema>> = [
+  { board_id: "demo-board", start_item_id: "item-a", end_item_id: "item-b", caption: "calls" },
+];
+
 export async function create_connector(
-  client: MiroApiClient,
+  client: MiroApiClientLike,
   params: z.infer<typeof create_connector_schema>
 ) {
   const result = await client.create_connector(params.board_id, {
