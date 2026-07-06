@@ -4,12 +4,30 @@ import { extname, resolve } from "node:path";
 import { getConfig } from "./config.js";
 import { repository } from "./db/database.js";
 import { ResponseError, startWorkflowRun, syncBoards } from "./services/workflowService.js";
+import { AuthError, hasScope, issueToken, listWorkspaceTokens, revokeToken, verifyBearer } from "./services/authService.js";
+import { incHttpRequest, incRunOutcome, incWebhookDelivery, metrics, observeHttpDuration } from "./metrics.js";
+import {
+  startRunContractV1,
+  upsertCredentialContractV1,
+  listRunsQueryContractV1,
+  listAuditQueryContractV1,
+  issueAuthTokenContractV1,
+  workspaceIdPathContractV1,
+  parseOrThrow,
+} from "../shared/contracts/index.js";
+import type { z } from "zod";
 
 export interface StartServerOptions {
   port?: number;
   corsOrigin?: string;
   /** Max request body size in bytes. Default 1 MiB. */
   maxBodyBytes?: number;
+}
+
+type Verified = Awaited<ReturnType<typeof import("./services/authService.js").verifyBearer>>;
+interface RequestContext {
+  requestId: string;
+  auth: Verified;
 }
 
 /** Read a request body with a hard byte cap. Rejects with `ResponseError` on overflow. */
@@ -70,7 +88,7 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
     "content-type": "application/json; charset=utf-8",
     "access-control-allow-origin": corsOrigin,
     "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type",
+    "access-control-allow-headers": "content-type, authorization, x-request-id",
   };
   const mimeTypes: Record<string, string> = {
     ".html": "text/html",
@@ -88,7 +106,10 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
 
   return async function handle(request: IncomingMessage, response: ServerResponse) {
     await ready();
-    if (!request.url) return send(response, 400, { error: "Missing URL" }, corsOrigin);
+    if (!request.url) {
+      send(response, 400, { error: "Missing URL" }, corsOrigin);
+      return;
+    }
     if (request.method === "OPTIONS") {
       response.writeHead(204, jsonHeaders);
       response.end();
@@ -96,85 +117,133 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
     }
     const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
     const path = url.pathname;
+    const requestId = request.headers["x-request-id"]?.toString() ?? `req-${crypto.randomUUID().slice(0, 8)}`;
+    const startedAt = performance.now();
+
+    /** Mutable per-request state passed via closure. */
+    const ctx: RequestContext = { requestId, auth: { status: "invalid" } };
+
+    /** Per-handler wrapper around the module-level `send` that also writes an access log line. */
+    const sendLogged = (status: number, data: unknown) => {
+      send(response, status, data, corsOrigin);
+      const ms = (performance.now() - startedAt);
+      incHttpRequest(request.method ?? "GET", path, status);
+      observeHttpDuration(request.method ?? "GET", path, status, ms);
+      const ws = ctx.auth.status === "ok" ? ctx.auth.token.workspaceId : "-";
+      process.stdout.write(JSON.stringify({
+        level: "info", msg: "http.access", time: new Date().toISOString(),
+        requestId, method: request.method, path, status, durMs: Math.round(ms * 10) / 10, workspace: ws,
+      }) + "\n");
+    };
+
+    /** Auth wall helper — used by every write route. */
+    async function requireScope(scope: string): Promise<{ workspaceId: string; tokenId: string } | null> {
+      const result = await verifyBearer(request.headers["authorization"]);
+      ctx.auth = result;
+      if (result.status !== "ok") {
+        const status = result.status === "expired" ? 401 : result.status === "denied" ? 403 : 401;
+        const reason = result.status === "denied" ? result.reason : `Bearer ${result.status}`;
+        sendLogged(status, { error: reason });
+        return null;
+      }
+      if (!hasScope(result, scope as never)) {
+        sendLogged(403, { error: `Scope '${scope}' required.` });
+        return null;
+      }
+      return { workspaceId: result.token.workspaceId, tokenId: result.token.id };
+    }
+
+    /** Per-handler zod wrapper that returns null + 400 if invalid. */
+    function parseOrSend400<T>(schema: z.ZodType<T>, raw: unknown, routeName: string): T | null {
+      try {
+        return parseOrThrow(schema, raw, routeName);
+      } catch (err) {
+        const issues = (err as Error & { issues?: unknown }).issues ?? String(err);
+        sendLogged(400, { error: `Invalid request: ${routeName}`, issues });
+        return null;
+      }
+    }
 
     try {
       if (path === "/api/health") {
-        return send(
-          response,
-          200,
-          { status: "ok", mode: config.providerMode, databasePath: config.databasePath, timestamp: new Date().toISOString() },
-          corsOrigin,
-        );
+        return sendLogged(200, { status: "ok", mode: config.providerMode, databasePath: config.databasePath, timestamp: new Date().toISOString() });
       }
-      if (path === "/api/summary") return send(response, 200, repository.getSummary(), corsOrigin);
+      if (path === "/api/summary") return sendLogged(200, repository.getSummary());
       if (path === "/api/workspaces")
-        return send(response, 200, { data: repository.listWorkspaces(), credentials: repository.listCredentials() }, corsOrigin);
-      if (path === "/api/boards") return send(response, 200, { data: repository.listBoards() }, corsOrigin);
-      if (path === "/api/templates") return send(response, 200, { data: repository.listTemplates() }, corsOrigin);
+        return sendLogged(200, { data: repository.listWorkspaces(), credentials: repository.listCredentials() });
+      if (path === "/api/boards") return sendLogged(200, { data: repository.listBoards() });
+      if (path === "/api/templates") return sendLogged(200, { data: repository.listTemplates() });
       if (path.startsWith("/api/templates/")) {
         const template = repository.getTemplateBySlug(decodeURIComponent(path.split("/").pop() || ""));
-        return send(response, template ? 200 : 404, template || { error: "Template not found" }, corsOrigin);
+        return sendLogged(template ? 200 : 404, template || { error: "Template not found" });
       }
-      if (path === "/api/runs" && request.method === "GET")
-        return send(response, 200, { data: repository.listRuns(Number(url.searchParams.get("limit") || 25)) }, corsOrigin);
+      if (path === "/api/runs" && request.method === "GET") {
+        const q = parseOrSend400(listRunsQueryContractV1, Object.fromEntries(url.searchParams), "GET /api/runs");
+        if (!q) return;
+        return sendLogged(200, { data: repository.listRuns(q.limit) });
+      }
       if (path === "/api/runs" && request.method === "POST") {
-        const raw = parseBody(await readBody(request, maxBodyBytes)) as Record<string, unknown>;
-        const started = await startWorkflowRun(raw);
-        return send(response, 201, started, corsOrigin);
+        const body = parseOrSend400(startRunContractV1, parseBody(await readBody(request, maxBodyBytes)), "POST /api/runs");
+        if (!body) return;
+        const started = await startWorkflowRun(body);
+        if (!started) {
+          return sendLogged(500, { error: "Workflow run did not produce a record." });
+        }
+        incRunOutcome(started.status === "completed" ? "completed" : "failed");
+        return sendLogged(201, started);
       }
       if (path.startsWith("/api/runs/")) {
         const run = repository.getRun(decodeURIComponent(path.split("/").pop() || ""));
-        return send(response, run ? 200 : 404, run || { error: "Run not found" }, corsOrigin);
+        return sendLogged(run ? 200 : 404, run || { error: "Run not found" });
       }
-      if (path === "/api/audit-events")
-        return send(
-          response,
-          200,
-          { data: repository.listAuditEvents({ limit: Number(url.searchParams.get("limit") || 50) }) },
-          corsOrigin,
-        );
+      if (path === "/api/audit-events") {
+        const q = parseOrSend400(listAuditQueryContractV1, Object.fromEntries(url.searchParams), "GET /api/audit-events");
+        if (!q) return;
+        return sendLogged(200, { data: repository.listAuditEvents({ limit: q.limit }) });
+      }
       if (path === "/api/sync/boards" && request.method === "POST")
-        return send(response, 200, { data: await syncBoards() }, corsOrigin);
+        return sendLogged(200, { data: await syncBoards() });
 
       if (path.startsWith("/api/boards/") && path.endsWith("/items") && request.method === "GET") {
         const boardId = decodeURIComponent(path.split("/")[3] || "");
         const board = repository.getBoard(boardId);
-        if (!board) return send(response, 404, { error: "Board not found" }, corsOrigin);
+        if (!board) return sendLogged(404, { error: "Board not found" });
         const allRuns = repository.listRuns(50);
         const matching = allRuns.filter((r) => r.boardId === boardId);
         const items = matching.flatMap((r) => repository.listBoardItems(r.id));
-        return send(response, 200, { data: items, board }, corsOrigin);
+        return sendLogged(200, { data: items, board });
       }
 
       if (path === "/api/credentials" && request.method === "POST") {
-        const raw = parseBody(await readBody(request, maxBodyBytes)) as Record<string, unknown>;
-        const wsId = String(raw.workspaceId || "");
-        const label = String(raw.credentialLabel || "").trim() || "Miro OAuth credential";
-        const scopes = Array.isArray(raw.scopes) ? raw.scopes.map((s: unknown) => String(s)) : ["board:read", "board:write"];
-        const expiresAt = typeof raw.expiresAt === "string" ? raw.expiresAt : new Date(Date.now() + 3600_000).toISOString();
-        if (!wsId) return send(response, 400, { error: "workspaceId required" }, corsOrigin);
-        const workspace = repository.listWorkspaces().find((w) => w.id === wsId);
-        if (!workspace) return send(response, 404, { error: "Workspace not found" }, corsOrigin);
+        const auth = await requireScope("credentials:write");
+        if (!auth) return;
+        const body = parseOrSend400(upsertCredentialContractV1, parseBody(await readBody(request, maxBodyBytes)), "POST /api/credentials");
+        if (!body) return;
+        if (body.workspaceId !== auth.workspaceId) {
+          return sendLogged(403, { error: "Cannot add credentials to a different workspace." });
+        }
+        const workspace = repository.listWorkspaces().find((w) => w.id === body.workspaceId);
+        if (!workspace) return sendLogged(404, { error: "Workspace not found" });
         const record = {
           id: `cred-${crypto.randomUUID()}`,
-          workspaceId: wsId,
+          workspaceId: body.workspaceId,
           provider: "miro" as const,
-          credentialLabel: label,
-          scopes,
-          expiresAt,
+          credentialLabel: body.credentialLabel ?? "Miro OAuth credential",
+          scopes: body.scopes ?? [],
+          expiresAt: body.expiresAt ?? new Date(Date.now() + 3600_000).toISOString(),
           status: "connected" as const,
           fromOAuthDeviceFlow: true,
         };
         await repository.upsertCredential(record);
         await repository.createAuditEvent({
-          workspaceId: wsId,
+          workspaceId: body.workspaceId,
           runId: null,
           eventType: "credential.added",
           severity: "info",
-          message: `Credential '${label}' added for workspace ${workspace.name}.`,
-          metadata: { credentialLabel: label, scopes },
+          message: `Credential '${body.credentialLabel}' added for workspace ${workspace.name}.`,
+          metadata: { credentialLabel: body.credentialLabel, scopes: body.scopes },
         });
-        return send(response, 201, { credential: record, deviceFlow: null }, corsOrigin);
+        return sendLogged(201, { credential: record, deviceFlow: null });
       }
       if (path.startsWith("/api/credentials/") && request.method === "DELETE") {
         // Demo: we keep audit-only metadata; deletion is a no-op + audit row.
@@ -187,11 +256,17 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
           message: `Credential ${id} revoked from dashboard.`,
           metadata: { credentialId: id },
         });
-        return send(response, 200, { ok: true }, corsOrigin);
+        return sendLogged(200, { ok: true });
       }
 
       if (path.match(/^\/api\/workspaces\/[^/]+\/oauth\/device-code$/) && request.method === "POST") {
-        const workspaceId = decodeURIComponent(path.split("/")[3] || "");
+        const auth = await requireScope("credentials:write");
+        if (!auth) return;
+        const pathMatch = path.match(/^\/api\/workspaces\/([^/]+)\/oauth\/device-code$/);
+        if (!pathMatch) return sendLogged(404, { error: "Not found" });
+        const pathParams = parseOrSend400(workspaceIdPathContractV1, { workspaceId: decodeURIComponent(pathMatch[1]) }, "POST /api/workspaces/:id/oauth/device-code");
+        if (!pathParams) return;
+        const workspaceId = pathParams.workspaceId;
         // OAuth device flow stub: in production this is a remote call to
         // Miro's `/oauth/device/code` endpoint. In demo mode we return a
         // plausible shape so the UI can show the user-code / verification URI.
@@ -204,11 +279,102 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
           message: `OAuth device-flow started for workspace ${workspaceId}.`,
           metadata: { userCode },
         });
-        return send(response, 200, {
+        return sendLogged(200, {
           userCode,
           verificationUri: "https://miro.com/oauth/device",
           expiresIn: 600,
-        }, corsOrigin);
+        });
+      }
+
+      // -----------------------------------------------------------------
+      // Auth token management (issue / list / revoke).
+      // -----------------------------------------------------------------
+      if (path === "/api/auth/tokens" && request.method === "POST") {
+        const auth = await requireScope("dashboard:write");
+        if (!auth) return;
+        const body = parseOrSend400(issueAuthTokenContractV1, parseBody(await readBody(request, maxBodyBytes)), "POST /api/auth/tokens");
+        if (!body) return;
+        if (body.workspaceId !== auth.workspaceId) {
+          return sendLogged(403, { error: "Cannot issue tokens for a different workspace." });
+        }
+        const issued = await issueToken(body);
+        return sendLogged(201, {
+          id: issued.id,
+          workspaceId: issued.workspaceId,
+          label: issued.label,
+          scopes: issued.scopes,
+          expiresAt: issued.expiresAt,
+          plaintext: issued.plaintext,
+        });
+      }
+      if (path === "/api/auth/tokens" && request.method === "GET") {
+        const auth = await requireScope("dashboard:read");
+        if (!auth) return;
+        const tokens = await listWorkspaceTokens(auth.workspaceId);
+        return sendLogged(200, { data: tokens.map((t) => ({ id: t.id, label: t.label, scopes: t.scopes, createdAt: t.createdAt, expiresAt: t.expiresAt, lastUsedAt: t.lastUsedAt, revokedAt: t.revokedAt, prefix: t.prefix })) });
+      }
+      if (path.startsWith("/api/auth/tokens/") && request.method === "DELETE") {
+        const auth = await requireScope("dashboard:write");
+        if (!auth) return;
+        const id = decodeURIComponent(path.split("/").pop() || "");
+        await revokeToken(id);
+        await repository.createAuditEvent({
+          workspaceId: auth.workspaceId,
+          runId: null,
+          eventType: "auth.token.revoked",
+          severity: "warning",
+          message: `Token ${id} revoked.`,
+          metadata: { tokenId: id, requester: auth.tokenId },
+        });
+        return sendLogged(200, { ok: true });
+      }
+
+      // -----------------------------------------------------------------
+      // Miro webhook ingestion (HMAC + dedupe via unique(source, external_id)).
+      // -----------------------------------------------------------------
+      if (path === "/api/webhooks/miro" && request.method === "POST") {
+        const auth = await requireScope("webhooks:write");
+        if (!auth) return;
+        const raw = readBody(request, maxBodyBytes);
+        let body = "";
+        try { body = await raw; } catch (err) {
+          if (err instanceof ResponseError) return sendLogged(err.status, { error: err.message });
+          return sendLogged(500, { error: "Internal server error" });
+        }
+        const sig = request.headers["x-miro-signature"]?.toString() || "";
+        const expected = require("node:crypto").createHmac("sha256", process.env.MIRO_WEBHOOK_SECRET || "dev-webhook-secret")
+          .update(body).digest("hex");
+        if (!sig || sig !== expected) {
+          return sendLogged(401, { error: "Invalid webhook signature." });
+        }
+        let payload: Record<string, unknown>;
+        try { payload = JSON.parse(body); } catch { return sendLogged(400, { error: "Invalid JSON." }); }
+        const externalId = String((payload as { id?: unknown }).id ?? `${Date.now()}-${Math.random()}`);
+        const workspaceId = String((payload as { workspaceId?: unknown }).workspaceId ?? auth.workspaceId);
+        const result = await repository.recordWebhookDelivery({ source: "miro", externalId, workspaceId, payload });
+        await repository.createAuditEvent({
+          workspaceId,
+          runId: null,
+          eventType: result.inserted ? "webhook.received" : "webhook.duplicate",
+          severity: "info",
+          message: result.inserted ? `Webhook ${externalId} accepted.` : `Webhook ${externalId} deduplicated.`,
+          metadata: { externalId, source: "miro" },
+        });
+        incWebhookDelivery(result.inserted ? "received" : "duplicate");
+        return sendLogged(result.inserted ? 202 : 200, { status: result.inserted ? "received" : "duplicate", externalId });
+      }
+
+      // -----------------------------------------------------------------
+      // Prometheus /metrics (text format).
+      // -----------------------------------------------------------------
+      if (path === "/metrics" && request.method === "GET") {
+        const httpLines: string[] = [];
+        for (const [name, value] of metrics()) {
+          httpLines.push(`${name} ${value}`);
+        }
+        response.writeHead(200, { "content-type": "text/plain; version=0.0.4" });
+        response.end(httpLines.join("\n") + "\n");
+        return;
       }
 
       const distPath = resolve("dist", path === "/" ? "index.html" : path.slice(1));
@@ -217,12 +383,12 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
         createReadStream(distPath).pipe(response);
         return;
       }
-      return send(response, 404, { error: "Not found" }, corsOrigin);
+      return sendLogged(404, { error: "Not found" });
     } catch (error) {
-      if (error instanceof ResponseError) return send(response, error.status, { error: error.message }, corsOrigin);
+      if (error instanceof ResponseError) return sendLogged(error.status, { error: error.message });
       // Log full error server-side; return a sanitized generic message to the client.
       console.error("[api] unhandled error:", error);
-      return send(response, 500, { error: "Internal server error" }, corsOrigin);
+      return sendLogged(500, { error: "Internal server error" });
     }
   };
 }

@@ -4,9 +4,11 @@ import { AddressInfo } from "node:net";
 import { repository } from "../server/db/database.js";
 import { seedBoards, seedCredentials, seedTemplates, seedWorkspaces } from "../shared/seedData.js";
 import { startServer } from "../server/bootstrap.js";
+import { issueToken } from "../server/services/authService.js";
 
 let server: Server;
 let baseUrl: string;
+let testToken: string;
 
 beforeAll(async () => {
   await repository.migrate();
@@ -14,6 +16,15 @@ beforeAll(async () => {
   for (const credential of seedCredentials) await repository.upsertCredential(credential);
   for (const board of seedBoards) await repository.upsertBoard(board);
   for (const template of seedTemplates) await repository.upsertTemplate(template);
+
+  // Issue a bearer token for the auth-walled tests.
+  const issued = await issueToken({
+    workspaceId: seedWorkspaces[0].id,
+    label: "vitest-test",
+    scopes: ["dashboard:read", "dashboard:write", "workspaces:read", "credentials:read", "credentials:write", "runs:read", "runs:write", "audit:read", "webhooks:write"],
+    ttlSeconds: 3600,
+  });
+  testToken = issued.plaintext;
 
   server = await startServer({ port: 0 });
   await new Promise<void>((resolve) => {
@@ -69,7 +80,7 @@ describe("HTTP API", () => {
     });
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toMatch(/sprint contract/i);
+    expect(body.error).toMatch(/Invalid request: POST \/api\/runs/i);
   });
 
   it("POST /api/sync/boards returns one result per board", async () => {
@@ -115,7 +126,7 @@ describe("HTTP API", () => {
     const wsId = workspaces.data[0].id;
     const createRes = await fetch(`${baseUrl}/api/credentials`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", authorization: `Bearer ${testToken}` },
       body: JSON.stringify({ workspaceId: wsId, credentialLabel: "Test OAuth credential", scopes: ["board:read"] }),
     });
     expect(createRes.status).toBe(201);
@@ -123,17 +134,17 @@ describe("HTTP API", () => {
     expect(created).toBeDefined();
     expect(created.credential).toBeTruthy();
     expect(created.credential?.credentialLabel).toBe("Test OAuth credential");
-    const listRes = await fetch(`${baseUrl}/api/workspaces`);
+    const listRes = await fetch(`${baseUrl}/api/workspaces`, { headers: { authorization: `Bearer ${testToken}` } });
     const list = await listRes.json();
     expect(list.credentials.length).toBeGreaterThan(0);
-    const delRes = await fetch(`${baseUrl}/api/credentials/${created.credential.id}`, { method: "DELETE" });
+    const delRes = await fetch(`${baseUrl}/api/credentials/${created.credential.id}`, { method: "DELETE", headers: { authorization: `Bearer ${testToken}` } });
     expect(delRes.status).toBe(200);
   });
 
   it("POST /api/credentials rejects a missing workspaceId with 400", async () => {
     const res = await fetch(`${baseUrl}/api/credentials`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", authorization: `Bearer ${testToken}` },
       body: JSON.stringify({ credentialLabel: "x" }),
     });
     expect(res.status).toBe(400);
@@ -142,7 +153,10 @@ describe("HTTP API", () => {
   it("POST /api/workspaces/:id/oauth/device-code returns a user code + verification URI", async () => {
     const workspaces = await (await fetch(`${baseUrl}/api/workspaces`)).json();
     const wsId = workspaces.data[0].id;
-    const res = await fetch(`${baseUrl}/api/workspaces/${wsId}/oauth/device-code`, { method: "POST" });
+    const res = await fetch(`${baseUrl}/api/workspaces/${wsId}/oauth/device-code`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${testToken}` },
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveProperty("userCode");
@@ -167,5 +181,14 @@ describe("HTTP API", () => {
       body: "{not json",
     });
     expect(res.status).toBe(400);
+  });
+
+  it("rejects a request with a malformed bearer token", async () => {
+    const res = await fetch(`${baseUrl}/api/auth/tokens`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer not-a-real-token" },
+      body: JSON.stringify({ workspaceId: "x", label: "y", scopes: ["dashboard:read"] }),
+    });
+    expect(res.status).toBe(401);
   });
 });

@@ -16,6 +16,7 @@ export default defineConfig({
     environment: "node",
     globals: false,
     include: ["tests/**/*.test.ts", "shared/**/*.test.ts", "server/**/*.test.ts", "scripts/**/*.test.ts", "src/agents/**/*.test.ts"],
+    exclude: ["tests/ui/**", "tests/e2e/**"],
     setupFiles: ["tests/setup.ts"],
     coverage: {
       provider: "v8",

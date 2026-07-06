@@ -24,6 +24,7 @@
     "contracts:build": "tsx scripts/build_contracts.ts",
     "contracts:check": "tsx scripts/check_contract_versions.ts",
     "bench": "tsx scripts/bench.ts",
+    "openapi:build": "tsx scripts/generate_openapi.ts",
     "agent:run": "tsx src/agents/cli.ts",
     "mcp:dev": "cd miro-custom-mcp && pnpm run dev",
     "mcp:build": "cd miro-custom-mcp && pnpm run build",
@@ -68,7 +69,8 @@
     "jsdom": "^25.0.1",
     "supertest": "^7.2.2",
     "tsx": "^4.19.4",
-    "vitest": "^2.1.9"
+    "vitest": "^2.1.9",
+    "zod-to-json-schema": "^3.25.2"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
