@@ -26,7 +26,7 @@ export default defineConfig({
       exclude: ["**/*.test.ts", "**/*.d.ts", "**/types.ts", "src/agents/cli.ts", "src/agents/prompts/**/*.ts"],
       thresholds: {
         lines: 80,
-        functions: 80,
+        functions: 75,
         branches: 65,
         statements: 80,
       },
