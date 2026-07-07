@@ -1,9 +1,18 @@
 {
   "name": "miro-custom-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
-  "description": "Custom Miro MCP server with full API control for board automation workflows.",
+  "description": "Miro MCP server (20 tools) for board automation workflows: sticky notes, shapes, frames, cards, connectors, images, batch ops, webhooks.",
   "main": "dist/index.js",
+  "homepage": "https://github.com/Alexi5000/miro-workflows/tree/master/miro-custom-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/Alexi5000/miro-workflows/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Alexi5000/miro-workflows.git",
+    "directory": "miro-custom-mcp"
+  },
   "scripts": {
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
