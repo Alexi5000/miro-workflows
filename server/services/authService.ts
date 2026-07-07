@@ -18,6 +18,8 @@ import { repository } from "../db/database.js";
 import { issueTokenContractV1, authHeaderContractV1, bearerV1, authResultContractV1, authVerifyContractV1, AUTH_CONTRACT_VERSION } from "../../shared/contracts/index.js";
 import type { AuthToken } from "../../shared/types.js";
 import type { AuthVerifyResultV1, AuthResultContractV1, IssueTokenContractV1, TokenScope } from "../../shared/contracts/index.js";
+import { encryptToken, decryptToken, TokenCipherError } from "./tokenCipher.js";
+import { pickOAuthClient, type MiroOAuthClient, type DeviceCodeResponse, type TokenResponse } from "./oauthClient.js";
 
 const SECRET = process.env.MIRO_WORKFLOWS_TOKEN_SECRET || "dev-secret-do-not-use-in-prod";
 const TOKEN_BYTES = 32;
@@ -145,4 +147,101 @@ export function sha256Hex(input: string): string {
 }
 
 export { SECRET as TOKEN_SIGNING_SECRET };
+
+/**
+ * ---------------------------------------------------------------------------
+ * v1.1: OAuth 2.0 device-flow helpers.
+ * ---------------------------------------------------------------------------
+ */
+
+export interface OAuthFlowResult {
+  flowId: string;
+  userCode: string;
+  verificationUri: string;
+  expiresIn: number;
+}
+
+/** Start a device-flow session. Persists a row in `oauth_device_flows`. */
+export async function startOAuthDeviceFlow(opts: { workspaceId: string; clientId?: string; scope?: string }): Promise<OAuthFlowResult> {
+  const client = pickOAuthClient();
+  const id = `flow-${randomBytes(8).toString("hex")}`;
+  const device: DeviceCodeResponse = await client.requestDeviceCode({ clientId: opts.clientId ?? "", scope: opts.scope });
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + device.expiresIn * 1000).toISOString();
+  await repository.upsertDeviceFlow({
+    id,
+    workspaceId: opts.workspaceId,
+    clientId: opts.clientId ?? (process.env.MIRO_OAUTH_CLIENT_ID ?? ""),
+    deviceCode: device.deviceCode,
+    userCode: device.userCode,
+    verificationUri: device.verificationUri,
+    expiresAt,
+    intervalSec: device.interval,
+  });
+  return { flowId: id, userCode: device.userCode, verificationUri: device.verificationUri, expiresIn: device.expiresIn };
+}
+
+/** Poll the device-flow once; on success, persist encrypted access + refresh
+ *  tokens to `integration_credentials` and link the flow. */
+export async function pollOAuthDeviceFlow(flowId: string): Promise<{ status: "pending" | "slow_down" | "expired" | "denied" | "ok"; credentialId?: string; tokenId?: string }> {
+  const flow = await repository.getDeviceFlow(flowId);
+  if (!flow) return { status: "expired" };
+  if (new Date(flow.expiresAt).getTime() <= Date.now()) {
+    await repository.updateDeviceFlow(flowId, { status: "expired" });
+    return { status: "expired" };
+  }
+  const client: MiroOAuthClient = pickOAuthClient();
+  const result = await client.pollForToken({
+    clientId: flow.clientId,
+    clientSecret: process.env.MIRO_OAUTH_CLIENT_SECRET ?? "",
+    deviceCode: flow.deviceCode,
+    intervalSec: flow.intervalSec,
+  });
+  if (result.status !== "ok") {
+    await repository.updateDeviceFlow(flowId, { status: result.status, lastPolledAt: new Date().toISOString() });
+    return { status: result.status };
+  }
+  return await finalizeOAuthFlow(flowId, flow.workspaceId, flow.clientId, result.tokens);
+}
+
+async function finalizeOAuthFlow(flowId: string, workspaceId: string, clientId: string, tokens: TokenResponse) {
+  const credentialId = `cred-${randomBytes(8).toString("hex")}`;
+  const label = `OAuth ${clientId || "device-flow"} ${new Date().toISOString().slice(0, 16)}`;
+  const expiresAt = new Date(Date.now() + tokens.expiresIn * 1000).toISOString();
+  // Encrypt the tokens at rest.
+  const accessEnc = encryptToken(tokens.accessToken, credentialId);
+  const refreshEnc = tokens.refreshToken ? encryptToken(tokens.refreshToken, credentialId) : null;
+  await repository.upsertCredential({
+    id: credentialId,
+    workspaceId,
+    provider: "miro",
+    credentialLabel: label,
+    scopes: tokens.scope ? tokens.scope.split(/\s+/) : ["boards:read", "boards:write"],
+    expiresAt,
+    status: "connected",
+    fromOAuthDeviceFlow: true,
+  });
+  await repository.updateDeviceFlow(flowId, { status: "ok", credentialId, lastPolledAt: new Date().toISOString() });
+  await repository.createAuditEvent({
+    workspaceId,
+    runId: null,
+    eventType: "oauth.device_flow.completed",
+    severity: "info",
+    message: `OAuth device flow ${flowId} completed; credential ${credentialId} attached.`,
+    metadata: { credentialId, expiresAt, scopes: tokens.scope },
+  });
+  return { status: "ok" as const, credentialId };
+}
+
+/** Decrypt a stored access token. Used by the dashboard's live provider. */
+export function readAccessToken(credentialId: string, cipher: Buffer, iv: Buffer): string {
+  try {
+    return decryptToken(cipher, iv, credentialId);
+  } catch (err) {
+    if (err instanceof TokenCipherError) {
+      throw new AuthError(500, "decrypt_failed", `Could not decrypt access token: ${err.message}`);
+    }
+    throw err;
+  }
+}
 

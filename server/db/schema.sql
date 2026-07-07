@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS integration_credentials (
   scopes_json TEXT NOT NULL DEFAULT '[]',
   expires_at TEXT,
   status TEXT NOT NULL DEFAULT 'connected',
+  from_oauth_device_flow INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -124,3 +125,21 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
 );
 
 CREATE INDEX IF NOT EXISTS idx_webhook_workspace ON webhook_deliveries(workspace_id);
+
+-- v1.1: OAuth device-flow in-flight sessions.
+CREATE TABLE IF NOT EXISTS oauth_device_flows (
+  id              TEXT PRIMARY KEY,
+  workspace_id    TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  client_id       TEXT NOT NULL,
+  device_code     TEXT NOT NULL,
+  user_code       TEXT NOT NULL,
+  verification_uri TEXT NOT NULL,
+  expires_at      TEXT NOT NULL,
+  interval_sec    INTEGER NOT NULL DEFAULT 5,
+  status         TEXT NOT NULL DEFAULT 'pending',
+  credential_id  TEXT REFERENCES integration_credentials(id) ON DELETE SET NULL,
+  created_at     TEXT NOT NULL,
+  updated_at     TEXT NOT NULL,
+  last_polled_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_oauthflow_workspace ON oauth_device_flows(workspace_id);
