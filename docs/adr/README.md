@@ -18,6 +18,12 @@ shape the codebase and would be costly to reverse. Each ADR follows the
 | [ADR-0008](0008-structured-logging-and-metrics.md) | Structured access logging + Prometheus `/metrics` | Accepted | 2026-07-06 |
 | [ADR-0009](0009-webhook-hmac-and-dedupe.md) | Webhook ingestion with HMAC + idempotent dedupe | Accepted | 2026-07-06 |
 | [ADR-0010](0010-zod-to-json-schema.md) | Drop hand-rolled JSON-Schema emitter for `zod-to-json-schema` | Accepted | 2026-07-06 |
+| [ADR-0011](0011-postgres-pivot.md) | Postgres + Drizzle ORM pivot | Accepted | 2026-07-07 |
+| [ADR-0012](0012-otel-traces-and-logs.md) | OpenTelemetry traces + structured logs | Accepted | 2026-07-07 |
+| [ADR-0013](0013-real-oauth-device-flow.md) | Real Miro OAuth 2.0 device-flow round-trip | Accepted | 2026-07-07 |
+| [ADR-0014](0014-token-encryption-aes-gcm.md) | Token encryption-at-rest (AES-256-GCM) | Accepted | 2026-07-07 |
+| [ADR-0015](0015-react-router-v7.md) | react-router v7 (data router) | Accepted | 2026-07-07 |
+| [ADR-0016](0016-helm-and-oci.md) | Helm chart + GHCR OIDC publish | Accepted | 2026-07-07 |
 
 ## Conventions
 
@@ -27,11 +33,14 @@ shape the codebase and would be costly to reverse. Each ADR follows the
 - Update the index when adding.
 - Every load-bearing decision needs an ADR. Trivial refactors do not.
 
-## v1.1+ candidates
+## v1.2+ candidates
 
-- ADR-0011: Postgres + Drizzle ORM pivot (planned for v1.1).
-- ADR-0012: Real OAuth 2.0 device-flow + token exchange (planned for v1.1).
-- ADR-0013: react-router v7 data router (planned for v1.3).
-- ADR-0014: Playwright e2e with visual snapshots (planned for v1.3).
-- ADR-0015: Helm chart + GHCR signed images (planned for v1.1).
-- ADR-0016: OpenTelemetry spans (planned for v1.1).
+- ADR-0017: KMS-backed token cipher (AWS KMS / GCP KMS) — replaces the
+  env-var master key from ADR-0014.
+- ADR-0018: Workspace-level rate limiting (token bucket per `workspace_id`).
+- ADR-0019: Audit-event streaming to S3 / GCS for long-term retention.
+- ADR-0020: Replay protection for the webhook endpoint (timestamp + nonce
+  window) — extends ADR-0009.
+- ADR-0021: Per-cloud Helm overlays (EKS / GKE / AKS).
+- ADR-0022: React Suspense + `useTransition` (deferred — covered by
+  ADR-0015 but not yet implemented).

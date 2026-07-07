@@ -18,28 +18,9 @@ sprint details live in `/docs/internal/` (not in foundation).
 
 ---
 
-## v1.1 — Production auth + Postgres pivot (planned: 4 weeks)
+## v1.1 — Production auth + Postgres pivot (DONE)
 
-**Tag:** `v1.1.0`
-
-Goals:
-
-1. Bearer-token auth wall on every write endpoint; CSRF on state changes.
-2. Real OAuth device-flow with token exchange + refresh + encrypted storage.
-3. Postgres (Drizzle ORM) with `sql.js` retained as a dev-only fallback.
-4. Structured logs (pino) + OpenTelemetry traces + Prometheus `/metrics`.
-
-Acceptance:
-
-- Migration run-book committed.
-- `pnpm run ci` green; coverage ≥ 80%.
-- Auth wall E2E test gate in CI.
-- Helm chart + GHCR signed images + OIDC publisher.
-
-Migration notes:
-
-- New `v1.0 → v1.1` ADR.
-- Backward-compat: API routes unchanged at the path level; only auth middleware added.
+**Tag:** `v1.1.0` (cut from commit pending)
 
 ---
 
