@@ -1,6 +1,6 @@
 {
   "name": "miro-custom-mcp",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "description": "Miro MCP server (20 tools) for board automation workflows: sticky notes, shapes, frames, cards, connectors, images, batch ops, webhooks.",
   "main": "dist/index.js",

@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "miro-workflows.fullname" . }}-api
+  labels: {{- include "miro-workflows.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.api.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: api
+      {{- include "miro-workflows.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: api
+        {{- include "miro-workflows.selectorLabels" . | nindent 8 }}
+    spec:
+      initContainers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}-api:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["node", "-e", "import('./dist/server/server/index.js').then(m=>m.repository.migrate()).then(()=>process.exit(0))"]
+          env:
+            - name: DATABASE_URL
+              value: {{ .Values.database.url | quote }}
+          volumeMounts:
+            - name: app
+              mountPath: /app
+      containers:
+        - name: api
+          image: "{{ .Values.image.repository }}-api:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8787
+          env:
+            - name: PORT
+              value: "8787"
+            - name: NODE_ENV
+              value: "production"
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: miro-secrets, key: database-url } }
+            - name: MIRO_WORKFLOWS_TOKEN_SECRET
+              valueFrom: { secretKeyRef: { name: miro-secrets, key: token-signing-secret } }
+            - name: MIRO_TOKEN_ENCRYPTION_KEY
+              valueFrom: { secretKeyRef: { name: miro-secrets, key: token-encryption-key } }
+            - name: MIRO_WEBHOOK_SECRET
+              valueFrom: { secretKeyRef: { name: miro-secrets, key: webhook-secret } }
+            - name: MIRO_OAUTH_CLIENT_ID
+              value: {{ .Values.auth.miro.clientId | quote }}
+            - name: MIRO_OAUTH_CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: miro-secrets, key: miro-oauth-client-secret } }
+            - name: MIRO_OAUTH_DEMO
+              value: {{ .Values.auth.miro.demo | quote }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.otel.endpoint | quote }}
+            - name: CORS_ORIGIN
+              value: {{ .Values.cors.origin | quote }}
+          livenessProbe:
+            httpGet: { path: /api/health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /api/health, port: http }
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources: {{- toYaml .Values.api.resources | nindent 12 }}
+      volumes:
+        - name: app
+          emptyDir: {}

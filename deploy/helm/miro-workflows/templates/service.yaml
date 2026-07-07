@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "miro-workflows.fullname" . }}-api
+  labels: {{- include "miro-workflows.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/component: api
+    {{- include "miro-workflows.selectorLabels" . | nindent 6 }}
+  ports:
+    - name: http
+      port: 8787
+      targetPort: 8787
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "miro-workflows.fullname" . }}-web
+  labels: {{- include "miro-workflows.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/component: web
+    {{- include "miro-workflows.selectorLabels" . | nindent 6 }}
+  ports:
+    - name: http
+      port: 5173
+      targetPort: 5173

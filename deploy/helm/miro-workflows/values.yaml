@@ -1,0 +1,77 @@
+# Default values for miro-workflows.
+# This is a YAML-formatted file consumed by `helm install` and friends.
+
+image:
+  repository: ghcr.io/alexi5000/miro-workflows
+  pullPolicy: IfNotPresent
+  tag: "1.1.0"
+
+# Postgres connection. Required in live mode.
+# sql.js file-backed engine is also supported via DATABASE_URL starting with sqlite://.
+database:
+  url: "postgres://miro:miro@postgres:5432/miro?sslmode=disable"
+  runMigrations: true
+
+auth:
+  # 32+ bytes recommended. Set with `openssl rand -base64 32`.
+  tokenSigningSecret: "REPLACE_ME"
+  # 32-byte AES-256-GCM key, base64-encoded.
+  tokenEncryptionKey: "REPLACE_ME_BASE64_32B"
+  # Bearer + scope matrix; defaults mirror the foundation.
+  defaultScopes: ["dashboard:read", "workspaces:read", "runs:read", "audit:read"]
+  # Required only if using live Miro OAuth.
+  miro:
+    clientId: ""
+    clientSecret: ""
+    demo: true
+
+# CORS origin allow-list (comma-separated).
+cors:
+  origin: "*"
+
+# OpenTelemetry OTLP endpoint (optional).
+otel:
+  endpoint: ""
+
+api:
+  replicas: 1
+  port: 8787
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  env:
+    logLevel: info
+
+web:
+  replicas: 1
+  port: 5173
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
+
+# OAuth-related secrets. These are surfaced as Kubernetes Secret resources.
+webhook:
+  # HMAC secret for the X-Miro-Signature header.
+  secret: "REPLACE_ME_WEBHOOK"
+  # Replay window (seconds). Default 300.
+  replayWindowSec: 300
+
+# Ingress. The chart ships a generic nginx-style ingress; per-cloud
+# specifics (EKS / GKE / AKS) belong in overlays.
+ingress:
+  enabled: false
+  className: nginx
+  hosts:
+    - host: miro.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []

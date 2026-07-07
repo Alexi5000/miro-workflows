@@ -6,6 +6,7 @@ import { repository } from "./db/database.js";
 import { ResponseError, startWorkflowRun, syncBoards } from "./services/workflowService.js";
 import { AuthError, hasScope, issueToken, listWorkspaceTokens, revokeToken, verifyBearer } from "./services/authService.js";
 import { incHttpRequest, incRunOutcome, incWebhookDelivery, metrics, observeHttpDuration } from "./metrics.js";
+import { rateLimit, verifyCsrf, checkWebhookTimestamp, markWebhookSignatureSeen } from "./middleware/security.js";
 import {
   startRunContractV1,
   upsertCredentialContractV1,
@@ -119,6 +120,32 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
     const path = url.pathname;
     const requestId = request.headers["x-request-id"]?.toString() ?? `req-${crypto.randomUUID().slice(0, 8)}`;
     const startedAt = performance.now();
+
+    // v1.1: rate limit per remote address. Cheap O(1) lookup; v1.2 will move
+    // to a Redis-backed shim.
+    const remoteAddress = request.socket.remoteAddress ?? "unknown";
+    const rl = rateLimit(remoteAddress);
+    if (!rl.ok) {
+      response.writeHead(429, {
+        "content-type": "application/json",
+        "retry-after": String(Math.ceil(rl.retryAfterMs / 1000)),
+        "access-control-allow-origin": corsOrigin,
+      });
+      response.end(JSON.stringify({ error: "Rate limit exceeded" }));
+      return;
+    }
+
+    // v1.1: CSRF check on state-changing requests when the caller is
+    // cookie-authenticated. v1.1 is API-only (bearer tokens), so this
+    // is wired but inactive by default.
+    const isStateChange = request.method === "POST" || request.method === "DELETE" || request.method === "PUT";
+    if (isStateChange && request.headers.cookie) {
+      const csrfSecret = process.env.MIRO_CSRF_SECRET ?? "csrf-secret-1";
+      if (!verifyCsrf(request.headers as Record<string, string | string[] | undefined>, csrfSecret)) {
+        send(response, 403, { error: "CSRF token invalid or missing" }, corsOrigin);
+        return;
+      }
+    }
 
     /** Mutable per-request state passed via closure. */
     const ctx: RequestContext = { requestId, auth: { status: "invalid" } };
@@ -347,6 +374,11 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
         if (!sig || sig !== expected) {
           return sendLogged(401, { error: "Invalid webhook signature." });
         }
+        // v1.1: replay protection — the signature must be fresh within the
+        // 5-minute window AND we must not have seen it before.
+        const tsCheck = checkWebhookTimestamp(request.headers as Record<string, string | string[] | undefined>);
+        if (!tsCheck.ok) return sendLogged(401, { error: `Replay protection: ${tsCheck.reason}` });
+        if (!markWebhookSignatureSeen(sig)) return sendLogged(409, { error: "Duplicate webhook delivery within replay window." });
         let payload: Record<string, unknown>;
         try { payload = JSON.parse(body); } catch { return sendLogged(400, { error: "Invalid JSON." }); }
         const externalId = String((payload as { id?: unknown }).id ?? `${Date.now()}-${Math.random()}`);

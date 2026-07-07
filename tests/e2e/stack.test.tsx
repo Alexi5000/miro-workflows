@@ -12,6 +12,7 @@ import { AddressInfo } from "node:net";
 import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
 import { startServer } from "../../server/bootstrap.js";
 import { repository } from "../../server/db/database.js";
+import { _resetSqlJsForTests } from "../../server/db/sqlJsRepository.js";
 import { seedBoards, seedCredentials, seedTemplates, seedWorkspaces } from "../../shared/seedData.js";
 import { App } from "../../src/App";
 import { AuthProvider } from "../../src/components/AuthProvider";
@@ -21,6 +22,7 @@ let server: Server;
 let baseUrl: string;
 
 beforeAll(async () => {
+  _resetSqlJsForTests();
   await repository.migrate();
   for (const workspace of seedWorkspaces) await repository.upsertWorkspace(workspace);
   for (const credential of seedCredentials) await repository.upsertCredential(credential);

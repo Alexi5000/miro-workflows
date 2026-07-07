@@ -1,0 +1,6 @@
+# Helm chart metadata files excluded from the chart package.
+.git/
+.gitignore
+.helmignore
+*.swp
+.DS_Store

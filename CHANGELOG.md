@@ -9,6 +9,106 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.0] — 2026-07-07 — **Production auth + Postgres pivot**
+
+The v1.1 cut takes the v1.0 foundation and adds: real OAuth 2.0
+device-flow round-trip, AES-256-GCM token encryption-at-rest, a
+Postgres adapter behind a shared `Repository` interface, OTel
+bootstrapping (no-op fallback), per-route `ErrorBoundary` + `Suspense`,
+rate limiting + CSRF + webhook replay protection, and a Helm chart for
+k8s deploys.
+
+### Added
+
+- **OAuth 2.0 device-flow round-trip** ([ADR-0013](./docs/adr/0013-real-oauth-device-flow.md)):
+  `startOAuthDeviceFlow` + `pollOAuthDeviceFlow` use the new
+  `MiroOAuthClient` interface. The default is the in-process
+  `FakeMiroOAuthClient` (deterministic, suitable for CI / demo).
+  Setting `MIRO_OAUTH_CLIENT_ID` + `MIRO_OAUTH_CLIENT_SECRET`
+  switches to the real `HttpMiroOAuthClient`.
+- **Token encryption-at-rest (AES-256-GCM)** ([ADR-0014](./docs/adr/0014-token-encryption-aes-gcm.md)):
+  `server/services/tokenCipher.ts`. Master key in
+  `MIRO_TOKEN_ENCRYPTION_KEY` (32 bytes base64); 12-byte per-token IV
+  + AAD = the row's `id`. Falls back to a dev key with a loud warning
+  when unset.
+- **Postgres adapter** ([ADR-0011](./docs/adr/0011-postgres-pivot.md)):
+  `server/db/pgRepository.ts` + `server/db/repository.ts` (the shared
+  `Repository` interface) + `server/db/migrations/0001_init.sql`.
+  Selected automatically when `DATABASE_URL` starts with
+  `postgres://` or `postgresql://`; otherwise sql.js.
+- **OpenTelemetry bootstrap** ([ADR-0012](./docs/adr/0012-otel-traces-and-logs.md)):
+  `server/telemetry.ts`. `startTelemetry()` is a no-op unless
+  `OTEL_EXPORTER_OTLP_ENDPOINT` is set. v1.2 wires a real
+  `BatchSpanProcessor` and OTLP HTTP exporter.
+- **Per-route `ErrorBoundary` + `Suspense`** on the dashboard
+  ([ADR-0015](./docs/adr/0015-react-router-v7.md)). The `react-router`
+  v7 data router is documented but not yet integrated; the foundation
+  router is preserved.
+- **Token-bucket rate limit** (per remote address, in-memory)
+  + **CSRF check** for state-changing requests
+  + **Webhook replay protection** (5-min window via `X-Miro-Timestamp` +
+  signature dedupe) in `server/middleware/security.ts`.
+- **Helm chart** at `deploy/helm/miro-workflows/` ([ADR-0016](./docs/adr/0016-helm-and-oci.md)):
+  `Chart.yaml` + `values.yaml` + `templates/{api,web}-deployment.yaml`,
+  `secret.yaml`, `service.yaml`, `_helpers.tpl`. OIDC-compatible
+  chart values; per-cloud overlays belong in a follow-up.
+- **`docs/MIGRATION.md`**: runbook for upgrading a v1.0 foundation DB
+  to a Postgres deployment in v1.1+.
+- **6 new ADRs** ([0011](./docs/adr/0011-postgres-pivot.md) →
+  [0016](./docs/adr/0016-helm-and-oci.md)) covering every load-bearing
+  decision in v1.1.
+- **17 new tests** (auth round-trip, AES-GCM round-trip, rate limit,
+  CSRF, webhook replay, OAuth client fake, full-stack e2e, OTel
+  smoke).
+
+### Changed
+
+- `server/db/database.ts` is now a backwards-compatible re-export
+  shim that returns the `Repository` singleton. All v1.0 call sites
+  continue to work.
+- `shared/contracts/index.ts` re-exports the auth contract types
+  from the new `auth.contract.v1.ts`.
+- `package.json` → `1.1.0`; `miro-custom-mcp/package.json` → `1.2.0`
+  (MCP package bumped because of new tools in v1.2).
+- README + ROADMAP + .github/REPOSITORY.md refreshed for the v1.1
+  release.
+
+### Test totals
+
+| Suite | v1.0 | v1.1 |
+| --- | ---: | ---: |
+| Root vitest | 69 | **86** |
+| UI + e2e (jsdom) | 8 | 8 |
+| MCP package | 34 | 34 |
+| **Total** | 111 | **128** |
+
+### Security
+
+- All POST/DELETE write endpoints still require a bearer token
+  (HMAC-SHA256 digest + 8-char prefix).
+- OAuth device-flow access + refresh tokens are stored encrypted.
+- Webhook ingestion is replay-protected (5-min window, signature
+  dedupe).
+- CSRF check is wired for cookie-based flows; v1.1 is API-only
+  (bearer) so the check is dormant by default.
+
+### Known limitations (deferred to v1.2 per `ROADMAP.md`)
+
+- `PgRepository` is a stub for read paths (the v1.0 read methods
+  return empty arrays). v1.1.1 fills in the per-method migrations.
+- The OTel bootstrap is a no-op (no exporter) — v1.2 wires the OTLP
+  HTTP exporter and `BatchSpanProcessor`.
+- `react-router` v7 is **not** yet a dependency; we use the foundation's
+  hash router with per-route `ErrorBoundary` + `Suspense`. v1.2 swaps in
+  the data router.
+- Playwright real-browser e2e is **not** in the v1.1 bundle (would
+  download a 250 MB binary). The jsdom full-stack test
+  (`tests/e2e/stack.test.tsx`) covers the same surface.
+- `Helm chart` is generic (no per-cloud ingress). Per-cloud overlays
+  are a follow-up.
+
+---
+
 ## [1.0.0] — 2026-07-07 — **FDE Foundation release**
 
 The first production-grade cut of Miro Workflows. Every FDE pillar is

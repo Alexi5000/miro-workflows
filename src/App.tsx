@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { Activity, ArrowRight, Boxes, CheckCircle2, Clock3, Database, GitBranch, KeyRound, LayoutDashboard, Link2, Play, RefreshCcw, ShieldCheck, Sparkles, Workflow } from "lucide-react";
 import { api, type CredentialRecord } from "./api";
 import type { AuditEvent, Board, DashboardSummary, RunDetail, WorkflowRun, WorkflowTemplate, Workspace } from "../shared/types";
 import { matchRoute, navigate, useRoute } from "./lib/router";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 type LoadState = "loading" | "ready" | "error";
 
@@ -424,16 +425,44 @@ export function App() {
         {!initialLoaded && state === "loading" && <div className="loading" data-testid="initial-loading">Loading workflow command center…</div>}
         {error && <div className="error-banner" data-testid="global-error">{error}</div>}
         {matched.pattern === "/dashboard" && (
-          <DashboardView
-            summary={summary} templates={templates} boards={boards} runs={runs}
-            auditEvents={auditEvents} selectedRun={selectedRun} busyAction={busyAction}
-            onRun={runWorkflow} onSelectRun={selectRun} onSyncBoards={syncBoards}
-          />
+          <ErrorBoundary boundary="dashboard">
+            <Suspense fallback={<div className="loading">Loading dashboard…</div>}>
+              <DashboardView
+                summary={summary} templates={templates} boards={boards} runs={runs}
+                auditEvents={auditEvents} selectedRun={selectedRun} busyAction={busyAction}
+                onRun={runWorkflow} onSelectRun={selectRun} onSyncBoards={syncBoards}
+              />
+            </Suspense>
+          </ErrorBoundary>
         )}
-        {matched.pattern === "/workspaces" && <WorkspacesView workspaces={workspaces} credentials={credentials} />}
-        {matched.pattern === "/boards" && <BoardsListView boards={boards} onSelect={(id) => navigate(`/boards/${id}`)} />}
-        {matched.pattern === "/boards/:id" && <BoardDetailView boardId={matched.params.id ?? ""} />}
-        {matched.pattern === "/credentials" && <CredentialsView workspaces={workspaces} credentials={credentials} onChange={loadWorkspaces} />}
+        {matched.pattern === "/workspaces" && (
+          <ErrorBoundary boundary="workspaces">
+            <Suspense fallback={<div className="loading">Loading workspaces…</div>}>
+              <WorkspacesView workspaces={workspaces} credentials={credentials} />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+        {matched.pattern === "/boards" && (
+          <ErrorBoundary boundary="boards">
+            <Suspense fallback={<div className="loading">Loading boards…</div>}>
+              <BoardsListView boards={boards} onSelect={(id) => navigate(`/boards/${id}`)} />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+        {matched.pattern === "/boards/:id" && (
+          <ErrorBoundary boundary="board-detail">
+            <Suspense fallback={<div className="loading">Loading board…</div>}>
+              <BoardDetailView boardId={matched.params.id ?? ""} />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+        {matched.pattern === "/credentials" && (
+          <ErrorBoundary boundary="credentials">
+            <Suspense fallback={<div className="loading">Loading credentials…</div>}>
+              <CredentialsView workspaces={workspaces} credentials={credentials} onChange={loadWorkspaces} />
+            </Suspense>
+          </ErrorBoundary>
+        )}
       </main>
     </div>
   );
