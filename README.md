@@ -1,122 +1,370 @@
+<div align="center">
+
+<a href="https://github.com/Alexi5000/miro-workflows">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/readme/hero.png" />
+    <img alt="Miro Workflows hero" src="assets/readme/hero.png" width="100%" />
+  </picture>
+</a>
+
 # Miro Workflows
 
-![Miro Workflows enterprise hero](assets/readme/hero.png)
-
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=0B1026)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-production-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
-[![Node.js](https://img.shields.io/badge/Node.js-API-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![SQLite](https://img.shields.io/badge/SQLite-sql.js-003B57?logo=sqlite&logoColor=white)](https://sql.js.org/)
-[![Miro](https://img.shields.io/badge/Miro-ready-FFD02F?logo=miro&logoColor=050038)](https://developers.miro.com/)
-[![MCP](https://img.shields.io/badge/MCP-enabled-8D52FF)](https://modelcontextprotocol.io/)
+[![Node.js 20](https://img.shields.io/badge/Node.js-20-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+[![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=0B1026)](https://react.dev)
+[![Vite](https://img.shields.io/badge/Vite-production-646CFF?logo=vite&logoColor=white)](https://vite.dev)
+[![SQLite](https://img.shields.io/badge/SQLite-sql.js-003B57?logo=sqlite&logoColor=white)](https://sql.js.org)
+[![MCP](https://img.shields.io/badge/MCP-20%20tools-8D52FF)](https://modelcontextprotocol.io)
+[![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Tests: 116 / 116](https://img.shields.io/badge/tests-116%2F116-success)](./ROADMAP.md)
+[![12 / 12 FDE pillars](https://img.shields.io/badge/12%2F12%20FDE-success)](./docs/ARCHITECTURE.md)
 
-**Miro Workflows** is a production-ready TypeScript command center for turning Miro-based collaboration into repeatable workflow operations. It combines a polished React dashboard, Node.js API, SQLite-backed persistence, workflow templates, audit trails, optional live Miro sync, a custom MCP server for agent-compatible board automation, a three-agent (Planner → Generator → Evaluator) planning harness with four-axis grading and plateau detection, an authoring surface of human decision-log notebooks, and an honest reproducible benchmark.
+**Production-grade Miro command center: React dashboard, Node API, custom MCP server,
+typed contracts, three-agent planning harness, OAuth device flow, Prometheus metrics, and a
+full Docker stack — all in one FDE-grade repo.**
 
-> ✅ **All 12 FDE pillars are implemented** (procedural memory, skills, contracts, harness, grader, plateau, notebooks, containerization, narrative README, benchmark, ADRs, full coverage). See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and the [12-pillar skill](.agents/skills/fde-pillar-review/SKILL.md).
+</div>
 
-![Miro Workflows capability badges](assets/readme/capability-badges.svg)
+---
 
-## Why it matters
+## ✨ What it does
 
-Miro Workflows gives teams a clean operational layer around visual collaboration. Operators can review board state, execute standard templates, inspect generated artifacts, and preserve workflow history without coupling the product experience directly to external API behavior. Miro documents both REST API applications and MCP-enabled automation patterns for extending boards and triggering actions from compatible clients.[1] [2]
+Miro Workflows turns visual collaboration into **repeatable operations** for product,
+engineering, and ops teams. It gives you:
 
-![Miro Workflows dashboard preview](assets/readme/dashboard-preview.png)
+- A **React dashboard** (`/dashboard`, `/workspaces`, `/boards`, `/boards/:id`, `/credentials`)
+  with hash routing, error boundary, and bearer-auth context.
+- A **Node HTTP API** (raw `node:http` + zod) with a **bearer-token auth wall**, 1 MiB
+  body cap, structured access logs, **Prometheus `/metrics`**, and a webhook endpoint
+  with HMAC-SHA256 + idempotent dedupe.
+- A **custom MCP server** with **20 tools** (boards + items + composite) over stdio,
+  with rate-limit-aware retry, numeric + HTTP-date `Retry-After` parsing, and a
+  `FakeMiroApiClient` for offline development.
+- A **three-agent planning harness** (Planner → Generator → Evaluator) with a
+  four-axis grader and a composable plateau detector, fully model-agnostic.
+- **Typed, versioned contracts** (`shared/contracts/`) — zod, JSON-Schema
+  artifacts, OpenAPI 3.1, all generated from the same source.
+- **Reproducible bench** with honest "what we DID NOT measure" disclosures.
+- **Three multi-stage Dockerfiles** + `docker-compose.yml` that builds and runs cleanly.
 
-| Capability | What it delivers |
-| --- | --- |
-| **Workflow dashboard** | A focused command center for boards, templates, runs, provider state, and audit activity. |
-| **Template execution** | Repeatable sprint planning, product discovery, and incident review workflows. |
-| **Persistence layer** | SQLite schema for workspaces, credentials metadata, boards, templates, runs, artifacts, and audit events. |
-| **Miro provider boundary** | Demo-first mode by default, with token-backed live sync available through environment configuration. |
-| **MCP package** | A Node.js custom MCP server for direct board automation from MCP-compatible clients. |
+![Capability badges](assets/readme/capability-badges.svg)
 
-## Architecture
+---
 
-![Miro Workflows production architecture](assets/readme/architecture.png)
+## 🖼️ Dashboard preview
 
-| Layer | Responsibility | Key paths |
+![Dashboard preview](assets/readme/dashboard-preview.png)
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+flowchart LR
+  subgraph Client
+    UI[React 18 + Vite SPA<br/>hash router · ErrorBoundary · AuthProvider]
+  end
+  subgraph MCP[Model Context Protocol]
+    Agent[Claude / codex / Cursor / etc.]
+  end
+  subgraph Server[Node HTTP API · raw node:http]
+    Auth[bearer auth wall<br/>scope-bounded]
+    Val[zod contracts<br/>body-size cap 1 MiB]
+    Log[structured access log]
+    Met[/metrics Prometheus]
+    Web[/api/webhooks/miro<br/>HMAC + dedupe]
+    Svc[services: workflowService, authService]
+  end
+  Repo[(sql.js<br/>file-backed SQLite)]
+  Miro[Miro REST v2]
+
+  UI -- "GET /api/*<br/>Bearer token" --> Auth
+  Agent -- "stdio<br/>20 tools" --> Svc
+  Auth --> Val
+  Val --> Svc
+  Svc --> Repo
+  Svc -- "live mode" --> Miro
+  Web -- "HMAC verify" --> Svc
+  Log -.-> stdout[JSON access log]
+  Met -.-> scraper[Prometheus / Grafana]
+```
+
+### End-to-end request lifecycle
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Dashboard (React)
+  participant B as BearerAuthProvider
+  participant A as Node API
+  participant V as zod Contract
+  participant S as WorkflowService
+  participant D as sql.js / SQLite
+  participant L as Structured Logger
+
+  C->>B: fetch /api/runs (Authorization: Bearer …)
+  B->>A: HTTP POST (requestId, body)
+  A->>A: requireScope("runs:write")
+  A->>V: parse(startRunContractV1)
+  V-->>A: typed body | 400 issues[]
+  A->>S: startWorkflowRun(body)
+  S->>D: createRun + createBoardItem + createAuditEvent
+  D-->>S: rows
+  S-->>A: RunDetail
+  A->>L: structured JSON line
+  A-->>C: 201 RunDetail
+```
+
+### MCP server (20 tools)
+
+```mermaid
+flowchart TB
+  subgraph MCP[Custom MCP Server · stdio]
+    direction TB
+    H[Server + ListToolsSchema + CallToolSchema]
+    R[Tool Registry]
+    C[FakeMiroApiClient<br/>demo mode]
+    L[MiroApiClient<br/>live mode + 429/401/5xx]
+  end
+  H --> R
+  R --> C
+  R --> L
+  L -- "HTTPS + Retry-After" --> MR[Miro REST v2]
+```
+
+---
+
+## 🧰 The 20 MCP tools
+
+Boards & items (CRUD + composite):
+
+| Boards | Items | Composite |
 | --- | --- | --- |
-| **React dashboard** | Operator UI, workflow controls, run history, and provider visibility. | [`src`](src) |
-| **Node.js API** | Health, summary, templates, runs, audit events, and board sync endpoints. | [`server`](server) |
-| **SQLite persistence** | Local durable database powered by `sql.js` for easy install and CI validation. | [`server/db/schema.sql`](server/db/schema.sql) |
-| **Shared domain model** | Type-safe contracts and production-shaped seed data. | [`shared`](shared) |
-| **MCP server** | Direct Miro board tools for compatible agent clients. | [`miro-custom-mcp`](miro-custom-mcp) |
+| `list_boards` | `create_sticky_note` | `batch_create_items` |
+| `create_board` | `create_shape` | `export_board` |
+| `get_board` | `create_frame` | `search_items` |
+| `update_board` | `create_text` | |
+| `delete_board` | `create_card` | |
+| `list_board_members` | `create_connector` | |
+| `list_subscriptions` | `create_image` | |
+| | `get_board_items` | |
+| | `update_item` | |
+| | `delete_item` | |
 
-Miro's OAuth and storage guidance recommends server-side environment configuration and durable token storage for production integrations.[3] [4] This repository keeps secrets out of source control, stores credential metadata, and leaves a clean path for future OAuth and managed database upgrades.
+All schemas live in `miro-custom-mcp/src/tools/`. Add a new tool = one file plus one
+registry line (see `.agents/skills/mcp-tool-authoring/SKILL.md`).
 
-## API surface
+---
 
-![Miro Workflows API contract](assets/readme/api-contract.png)
+## 🚦 Three-agent planning harness
 
-| Endpoint | Purpose |
-| --- | --- |
-| `GET /api/health` | Runtime, database, and provider health. |
-| `GET /api/summary` | Dashboard totals, boards, templates, runs, and integration status. |
-| `GET /api/templates` | Available workflow templates. |
-| `POST /api/runs` | Execute a workflow template against a board. |
-| `GET /api/runs/:id` | Run detail, generated items, and audit history. |
-| `POST /api/sync/boards` | Sync configured boards through the active provider. |
+```mermaid
+flowchart LR
+  T[Task] --> P[Planner<br/>PLANNER_SYSTEM_PROMPT]
+  P -->|Plan + Steps| G[Generator<br/>GENERATOR_SYSTEM_PROMPT]
+  G -->|Artifact + toolCalls| E[Evaluator<br/>EVALUATOR_SYSTEM_PROMPT]
+  E -->|scores + accepted?| G
+  G -->|artifact| H[withPlateauDetection<br/>composite ≤ epsilon]
+  H -->|roundsTaken| R[Result]
+```
 
-## Quick start
+- **`Planner`** turns a free-form task into a `Plan` with checkable `acceptance[]` per step.
+- **`Generator`** emits an `Artifact` + `toolCalls` (re-uses Evaluator feedback next round).
+- **`Evaluator`** scores each axis in `[0, 1]` (`correctness` / `safety` / `completeness` / `quality`).
+- **`withPlateauDetection(scorer, opts)`** wraps any scorer with sliding-window
+  plateau detection (epsilon / regression / converged).
+- **Model-agnostic.** Any `(messages) => Promise<string>` works — stub it for CI,
+  point it at Claude or codex in production.
 
-The default setup runs in **demo mode** with no Miro token required.
+Demo invocation:
 
 ```bash
+pnpm run agent:run -- "Build a sprint planning board with 6 columns"
+```
+
+---
+
+## 🚀 Quick start
+
+```bash
+git clone https://github.com/Alexi5000/miro-workflows.git
+cd miro-workflows
 pnpm install
-pnpm run seed
-pnpm run validate
-pnpm run smoke
-pnpm run dev:api
+cp .env.example .env
+pnpm run seed        # seeds workspaces, credentials, boards, templates
+pnpm run dev:api     # http://localhost:8787
+pnpm run dev:web     # http://localhost:5173
 ```
 
-Start the React dashboard in another terminal.
+The dashboard is at <http://localhost:5173>; the API at <http://localhost:8787>; `/api/health`,
+`/api/summary`, `/metrics` are open. Every write endpoint requires a bearer token —
+issue one via `POST /api/auth/tokens` (see [SECURITY.md](./SECURITY.md)).
+
+### Live Miro (optional)
 
 ```bash
-pnpm run dev:web
+MIRO_PROVIDER_MODE=miro MIRO_ACCESS_TOKEN=your-token pnpm run dev:api
 ```
 
-The dashboard runs at [`http://localhost:5173`](http://localhost:5173), and the API runs at [`http://localhost:8787`](http://localhost:8787). For live Miro sync, copy [`.env.example`](.env.example), set `MIRO_PROVIDER_MODE=miro`, and provide `MIRO_ACCESS_TOKEN`.
+For OAuth device flow wiring (currently a demo stub), see [`docs/OAUTH.md`](./docs/OAUTH.md).
 
-## Production checks
+### Docker
+
+```bash
+docker compose up --build    # web :5173, api :8787, mcp stdio
+docker compose down -v
+```
+
+---
+
+## 🛠️ Useful commands
 
 | Command | Purpose |
 | --- | --- |
-| `pnpm run seed` | Seed the local SQLite database. |
-| `pnpm run validate` | Verify schema and application state. |
-| `pnpm run smoke` | Execute a workflow and provider sync test. |
-| `pnpm run typecheck` | Run strict TypeScript checks. |
-| `pnpm run build` | Build the React app, Node API, and MCP package. |
-| `pnpm run mcp:build` | Build only the custom MCP server. |
+| `pnpm test` | Root vitest suite (server, contracts, agents, scripts) |
+| `pnpm run test:ui` | jsdom tests + full-stack e2e |
+| `pnpm run coverage` | v8 coverage; 80/65/80/80 thresholds |
+| `pnpm run typecheck` | Strict TS, 0 errors |
+| `pnpm run ci` | typecheck + contracts + tests + test:ui + smoke + validate |
+| `pnpm run bench` | Reproducible HTTP + harness numbers → `docs/BENCHMARK.md` |
+| `pnpm run openapi:build` | Generate `docs/openapi.json` |
+| `pnpm run contracts:build` | Generate JSON-Schema artifacts |
+| `pnpm run agent:run -- "task"` | Run the three-agent harness end-to-end |
+| `pnpm run mcp:test` | Run the MCP package vitest suite |
+| `pnpm run validate` | File-presence + seed-sanity check |
+| `docker compose config -q` | Compose lint (exit 0 = clean) |
 
-## Included workflows
+---
 
-![Animated workflow trace](assets/readme/workflow-motion.gif)
+## 📊 Latest benchmark (n=20, commit `63372d0`)
 
-| Template | Outcome |
+| Surface | Measurement | p50 | p95 |
+| --- | --- | ---: | ---: |
+| HTTP | `GET /api/health` | 1.0 ms | 1.8 ms |
+| HTTP | `GET /api/summary` | 1.6 ms | 3.3 ms |
+| HTTP | `GET /api/templates` | 0.7 ms | 1.4 ms |
+| HTTP | `POST /api/runs` | 10.2 ms | 14.5 ms |
+| Harness | `agent harness (1 step)` | 0.1 ms | 0.1 ms |
+| MCP | `batch_create_items(10)` | 139.3 ms | 141.9 ms |
+
+Full results + the "what we did NOT measure" list are in [`docs/BENCHMARK.md`](./docs/BENCHMARK.md).
+
+---
+
+## 🧪 Tests — 116 green
+
+| Suite | Count | Runner |
+| --- | ---: | --- |
+| Root (server, contracts, agents, scripts) | 69 | `vitest` |
+| UI + full-stack e2e (jsdom) | 13 | `vitest` + `@testing-library/react` |
+| MCP package | 34 | `vitest` |
+| **Total** | **116** | |
+
+`pnpm run ci` runs them all in CI (`.github/workflows/ci.yml`).
+
+---
+
+## 📁 Repository layout
+
+```
+.
+├── .agents/skills/      Authoring-time skills for coding agents
+├── docs/
+│   ├── ARCHITECTURE.md  Layered system model
+│   ├── SETUP.md         Local + Docker setup, env vars
+│   ├── BENCHMARK.md     Reproducible bench + honest gaps
+│   ├── CONTRACTS.md     Typed, versioned sprint / audit / run contracts
+│   ├── MCP-TOOLS.md     All 20 MCP tools
+│   ├── OAUTH.md         OAuth device-flow status (currently demo stub)
+│   ├── SKILLS.md        How to author .agents/skills/
+│   ├── TESTING.md       Coverage policy + how to add tests
+│   ├── adr/             Nygard-template ADRs (0001–0010)
+│   └── internal/        Sprint plans, internal docs
+├── miro-custom-mcp/     Standalone pnpm package; 20 tools + FakeMiroApiClient + bench + tests
+├── notebooks/           Human-authored decision logs
+├── scripts/             validate, smoke, bench, contracts, openapi generator, contract checks
+├── server/              Raw node:http API + zod-contract validation
+│   ├── bootstrap.ts     startServer, structured access log, auth wall, /metrics, /webhooks/miro
+│   ├── db/              sql.js + schema.sql + repository
+│   ├── services/        workflowService, authService (HMAC-SHA256 bearer tokens)
+│   └── metrics.ts       Prometheus counters and histograms
+├── shared/contracts/     Versioned zod schemas + zod-to-json-schema builders + re-exports
+├── src/                 React 18 + Vite + hash router + AuthProvider + ErrorBoundary
+├── tests/
+│   ├── api.test.ts      HTTP API integration
+│   ├── ui/              jsdom render tests
+│   ├── e2e/             full-stack e2e
+│   └── dom-setup.ts     jest-dom matchers
+├── AGENTS.md            Procedural memory for coding agents
+├── CONTRIBUTING.md      PR template, code review checklist
+├── ROADMAP.md           Public v1.0 → v1.5 forward-looking plan
+├── SECURITY.md         Vulnerability disclosure + hardening status
+├── docker-compose.yml   web + api + mcp
+├── Dockerfile.{web,api,mcp}
+└── package.json         pnpm 10.11.1, Node 20+
+```
+
+---
+
+## 📚 Documentation
+
+| File | What's in it |
 | --- | --- |
-| **Sprint Planning Accelerator** | Prioritization, risks, agenda, and sprint commitments. |
-| **Product Discovery Canvas** | User insights, jobs, evidence, experiments, and decisions. |
-| **Incident Review Retro** | Timeline, root-cause analysis, corrective actions, and prevention plan. |
+| [AGENTS.md](./AGENTS.md) | Procedural memory for coding agents |
+| [ROADMAP.md](./ROADMAP.md) | v1.0 → v1.5 forward-looking plan |
+| [SECURITY.md](./SECURITY.md) | Vulnerability disclosure + production hardening |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | PR template, code review checklist |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Layered system model + API contract + UI routing |
+| [docs/BENCHMARK.md](./docs/BENCHMARK.md) | Reproducible bench + honest gaps |
+| [docs/CONTRACTS.md](./docs/CONTRACTS.md) | Versioned contracts policy |
+| [docs/MCP-TOOLS.md](./docs/MCP-TOOLS.md) | All 20 tools |
+| [docs/OAUTH.md](./docs/OAUTH.md) | OAuth device-flow status (currently demo stub) |
+| [docs/SKILLS.md](./docs/SKILLS.md) | Authoring-time skills |
+| [docs/TESTING.md](./docs/TESTING.md) | Coverage policy |
+| [docs/openapi.json](./docs/openapi.json) | Generated OpenAPI 3.1 spec (run `pnpm run openapi:build`) |
+| [docs/adr/](./docs/adr/) | Architecture Decision Records (10 ADRs) |
+| [.agents/skills/](./.agents/skills/) | miro-board-design · mcp-tool-authoring · fde-pillar-review |
 
-## Documentation
+---
 
-| Document | Description |
+## 🔐 Security
+
+See [SECURITY.md](./SECURITY.md). The foundation ships with:
+
+- Body-size cap 1 MiB (returns 413).
+- Safe `JSON.parse` (returns 400 with structured `issues[]`).
+- Sanitized 500 responses (server logs the full error, client gets a generic message).
+- Bearer-token auth wall on every write endpoint.
+- HMAC-SHA256 webhook verification with idempotent dedupe.
+- Token storage: HMAC digest + 8-char prefix, never plaintext.
+- Structured access log with `requestId` correlation.
+
+> Reporting: `security@<your-domain>` (private key in `SECURITY.md`).
+
+---
+
+## 🚢 Production readiness
+
+| Surface | Status |
 | --- | --- |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Detailed system model, schema, API contract, security posture, and deployment notes. |
-| [`docs/SETUP.md`](docs/SETUP.md) | Local development, environment variables, validation, Docker, and MCP setup. |
-| [`docs/BENCHMARK.md`](docs/BENCHMARK.md) | Honest, reproducible benchmark results (HTTP API, MCP, three-agent harness). |
-| [`docs/CONTRACTS.md`](docs/CONTRACTS.md) | Typed, versioned sprint + audit + run contracts. |
-| [`docs/MCP-TOOLS.md`](docs/MCP-TOOLS.md) | Full MCP tool catalog (20 tools, boards + items + composite). |
-| [`docs/SKILLS.md`](docs/SKILLS.md) | How to author `.agents/skills/*.md`. |
-| [`docs/TESTING.md`](docs/TESTING.md) | Coverage policy + how to add tests. |
-| [`notebooks/`](notebooks/) | Human-authored decision logs (wiki-style cross-refs). |
-| [`docs/adr/`](docs/adr/) | Architecture Decision Records. |
-| [`miro-custom-mcp/README.md`](miro-custom-mcp/README.md) | Custom MCP server usage and production guidance. |
-| [`.env.example`](.env.example) | Safe defaults and optional live Miro provider configuration. |
+| Tests | **116/116 green** (root 69, UI 13, MCP 34) |
+| Typecheck | 0 errors |
+| Coverage thresholds | lines 80 / branches 65 / fns 80 / stmts 80 |
+| Dockerfiles | `web`, `api`, `mcp` all build OK |
+| `docker compose config -q` | ✅ |
+| Bench | reproducible, n=20, real numbers in `docs/BENCHMARK.md` |
+| CI | `.github/workflows/ci.yml` runs the full gate |
+| Auth | bearer + scope-bounded; tokens never stored as plaintext |
+| OpenAPI 3.1 | `docs/openapi.json` (run `pnpm run openapi:build`) |
 
-## References
+> **Next-stop for full production launch** ([ROADMAP.md](./ROADMAP.md) v1.1): real OAuth
+> device-flow + token exchange, Postgres + Drizzle ORM pivot, OpenTelemetry spans,
+> Helm chart + GHCR signed images.
 
-[1]: https://developers.miro.com/docs/rest-api-build-your-first-hello-world-app "Miro REST API quickstart"
-[2]: https://developers.miro.com/docs/miro-mcp "Miro MCP documentation"
-[3]: https://developers.miro.com/docs/miro-nodejs-quickstart-with-oauth-and-express "Miro Node.js quickstart with OAuth and Express"
-[4]: https://developers.miro.com/docs/miro-nodejs-implement-storage-for-data-persistence "Miro Node.js data persistence guide"
+---
+
+## 📜 License
+
+[MIT](./LICENSE) — © 2026 TechTide. See [SECURITY.md](./SECURITY.md) for vulnerability
+disclosure.

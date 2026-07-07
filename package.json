@@ -3,8 +3,16 @@
   "version": "1.0.0",
   "private": false,
   "type": "module",
-  "description": "Production-ready Miro workflow operations dashboard with TypeScript, a Node API, SQLite schemas, and MCP tooling.",
+  "description": "Production-grade Miro command center: React dashboard, Node API, custom MCP server (20 tools), typed contracts, three-agent planning harness, OAuth device flow, Prometheus metrics, full Docker stack.",
   "packageManager": "pnpm@10.11.1",
+  "homepage": "https://github.com/Alexi5000/miro-workflows#readme",
+  "bugs": {
+    "url": "https://github.com/Alexi5000/miro-workflows/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Alexi5000/miro-workflows.git"
+  },
   "scripts": {
     "dev": "pnpm run seed && pnpm run dev:api",
     "dev:api": "tsx watch server/index.ts",
