@@ -64,7 +64,7 @@
     "sql.js": "^1.13.0",
     "typescript": "latest",
     "vite": "latest",
-    "zod": "^3.23.8"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
