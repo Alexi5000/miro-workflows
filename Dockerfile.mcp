@@ -1,5 +1,5 @@
 # Dockerfile.mcp — multi-stage build for the standalone MCP server.
-FROM node:20-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /app
 COPY miro-custom-mcp/package.json miro-custom-mcp/pnpm-lock.yaml* ./
 COPY shared ../shared
@@ -10,7 +10,7 @@ COPY miro-custom-mcp/src ./src
 COPY shared ../shared
 RUN pnpm run build
 
-FROM node:20-alpine AS run
+FROM node:25-alpine AS run
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/package.json /app/pnpm-lock.yaml ./
