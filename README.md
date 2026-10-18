@@ -11,7 +11,7 @@
 
 [![Release v1.0.0](https://img.shields.io/badge/release-v1.0.0-0d6efd?logo=github&logoColor=white)](https://github.com/Alexi5000/miro-workflows/releases/tag/v1.0.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Node.js 20](https://img.shields.io/badge/Node.js-20-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+[![Node.js 24](https://img.shields.io/badge/Node.js-24-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=0B1026)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-production-646CFF?logo=vite&logoColor=white)](https://vite.dev)
 [![SQLite](https://img.shields.io/badge/SQLite-sql.js-003B57?logo=sqlite&logoColor=white)](https://sql.js.org)
