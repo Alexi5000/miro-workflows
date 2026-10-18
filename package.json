@@ -74,7 +74,7 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@types/sql.js": "^1.4.11",
-    "@types/supertest": "^6.0.3",
+    "@types/supertest": "^7.2.1",
     "@vitest/coverage-v8": "^4.1.12",
     "happy-dom": "^21.0.3",
     "jsdom": "^25.0.1",
