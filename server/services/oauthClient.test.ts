@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { FakeMiroOAuthClient, HttpMiroOAuthClient, pickOAuthClient } from "./oauthClient";
+import { FakeMiroOAuthClient, HttpMiroOAuthClient, pickOAuthClient } from "./oauthClient.js";
 
 afterEach(() => vi.unstubAllEnvs());
 
