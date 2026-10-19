@@ -209,7 +209,7 @@ export class SqlJsRepository implements Repository {
   listTemplates(): WorkflowTemplate[] { return all("SELECT * FROM workflow_templates ORDER BY category, name").map(mapTemplate); }
   getTemplateBySlug(slug: string): WorkflowTemplate | null { const row = get("SELECT * FROM workflow_templates WHERE slug = ?", [slug]); return row ? mapTemplate(row) : null; }
   getTemplateById(templateId: string): WorkflowTemplate | null { const row = get("SELECT * FROM workflow_templates WHERE id = ?", [templateId]); return row ? mapTemplate(row) : null; }
-  listRuns(limit = 25) { return all(`SELECT r.*, t.name AS template_name, b.name AS board_name FROM workflow_runs r JOIN workflow_templates t ON t.id = r.template_id JOIN boards b ON b.id = r.board_id ORDER BY r.started_at DESC LIMIT ?`, [limit]).map(mapRun); }
+  listRuns(limit = 25, workspaceId?: string) { return all(`SELECT r.*, t.name AS template_name, b.name AS board_name FROM workflow_runs r JOIN workflow_templates t ON t.id = r.template_id JOIN boards b ON b.id = r.board_id WHERE (? IS NULL OR b.workspace_id = ?) ORDER BY r.started_at DESC LIMIT ?`, [workspaceId ?? null, workspaceId ?? null, limit]).map(mapRun); }
   getRun(runId: string): RunDetail | null {
     const row = get(`SELECT r.*, t.name AS template_name, b.name AS board_name FROM workflow_runs r JOIN workflow_templates t ON t.id = r.template_id JOIN boards b ON b.id = r.board_id WHERE r.id = ?`, [runId]);
     if (!row) return null;

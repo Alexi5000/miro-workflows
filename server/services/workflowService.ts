@@ -7,7 +7,7 @@ import { DemoMiroProvider, MiroRestProvider, type WorkflowProvider } from "../pr
 const config = getConfig();
 const provider: WorkflowProvider = config.providerMode === "miro" ? new MiroRestProvider(config.miroAccessToken) : new DemoMiroProvider();
 
-export async function startWorkflowRun(raw: unknown) {
+export async function startWorkflowRun(raw: unknown, workspaceId?: string) {
   let parsed;
   try {
     parsed = parseContract<SprintContractV1>("sprint", raw);
@@ -20,6 +20,8 @@ export async function startWorkflowRun(raw: unknown) {
   if (!template) throw new ResponseError(404, `Unknown workflow template: ${input.templateSlug}`);
   const board = repository.getBoard(input.boardId || template.defaultBoardId);
   if (!board) throw new ResponseError(404, `Unknown board: ${input.boardId || template.defaultBoardId}`);
+
+  if (workspaceId && (board.workspaceId !== workspaceId || repository.getBoard(template.defaultBoardId)?.workspaceId !== workspaceId)) throw new ResponseError(403, "Workspace access denied.");
 
   const runId = `run-${crypto.randomUUID()}`;
   const providerResult = await provider.executeTemplate(template, board, runId);
@@ -54,13 +56,13 @@ export async function startWorkflowRun(raw: unknown) {
   return repository.getRun(run.id);
 }
 
-export async function syncBoards() {
-  const boards = repository.listBoards();
+export async function syncBoards(workspaceId?: string) {
+  const boards = repository.listBoards().filter((board) => !workspaceId || board.workspaceId === workspaceId);
   const results = [];
   for (const board of boards) {
     const result = await provider.syncBoard(board);
-    repository.updateBoardSync(board.id);
-    repository.createAuditEvent({
+    await repository.updateBoardSync(board.id);
+    await repository.createAuditEvent({
       workspaceId: board.workspaceId,
       runId: null,
       eventType: "board.synced",
