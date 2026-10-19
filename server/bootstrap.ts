@@ -85,11 +85,12 @@ function send(response: ServerResponse, status: number, data: unknown, corsOrigi
 
 function buildHandler(corsOrigin: string, maxBodyBytes: number) {
   const config = getConfig();
+  const csrfSecret = process.env.MIRO_CSRF_SECRET?.trim();
   const jsonHeaders = {
     "content-type": "application/json; charset=utf-8",
     "access-control-allow-origin": corsOrigin,
     "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type, authorization, x-request-id",
+    "access-control-allow-headers": "content-type, authorization, x-request-id, x-miro-csrf-token, x-csrftoken",
   };
   const mimeTypes: Record<string, string> = {
     ".html": "text/html",
@@ -135,12 +136,8 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
       return;
     }
 
-    // v1.1: CSRF check on state-changing requests when the caller is
-    // cookie-authenticated. v1.1 is API-only (bearer tokens), so this
-    // is wired but inactive by default.
-    const isStateChange = request.method === "POST" || request.method === "DELETE" || request.method === "PUT";
-    if (isStateChange && request.headers.cookie) {
-      const csrfSecret = process.env.MIRO_CSRF_SECRET ?? "csrf-secret-1";
+    const isStateChange = ["POST", "DELETE", "PUT", "PATCH"].includes(request.method ?? "");
+    if (isStateChange && csrfSecret) {
       if (!verifyCsrf(request.headers as Record<string, string | string[] | undefined>, csrfSecret)) {
         send(response, 403, { error: "CSRF token invalid or missing" }, corsOrigin);
         return;

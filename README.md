@@ -369,3 +369,12 @@ See [SECURITY.md](./SECURITY.md). The foundation ships with:
 
 [MIT](./LICENSE) — © 2026 TechTide. See [SECURITY.md](./SECURITY.md) for vulnerability
 disclosure.
+
+### Optional CSRF enforcement
+
+The API uses bearer authentication by default. Set `MIRO_CSRF_SECRET` to enable
+CSRF enforcement for every POST, PUT, PATCH and DELETE request, regardless of
+whether a caller sends cookies. Clients must supply `x-miro-csrf-token` containing
+the hex HMAC-SHA256 of `miro_csrf` under that secret. This includes webhook callers
+when enforcement is enabled. No public fallback secret is used. Configure the
+secret before starting the server; read-only requests remain unaffected.
