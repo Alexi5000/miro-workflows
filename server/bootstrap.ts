@@ -191,7 +191,12 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
 
     try {
       let workspaceId: string | undefined;
-      if (config.providerMode === "miro" && (path.startsWith("/api/") || path === "/metrics") && path !== "/api/health") {
+      if (config.providerMode === "miro" && path === "/metrics") {
+        const secret = process.env.MIRO_METRICS_TOKEN;
+        const supplied = request.headers.authorization?.replace(/^Bearer /, "") || "";
+        if (!secret || Buffer.byteLength(secret) !== Buffer.byteLength(supplied) || !timingSafeEqual(Buffer.from(secret), Buffer.from(supplied))) return sendLogged(401, { error: "Operator metrics token required." });
+      }
+      if (config.providerMode === "miro" && path.startsWith("/api/") && path !== "/api/health") {
         const scope = path.startsWith("/api/runs") ? (isStateChange ? "runs:write" : "runs:read")
           : path.startsWith("/api/credentials") || path.includes("/oauth/device-code") ? "credentials:write"
           : path === "/api/webhooks/miro" ? "webhooks:write"

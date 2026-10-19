@@ -382,3 +382,5 @@ secret before starting the server; read-only requests remain unaffected.
 ### Live workspace authorization
 
 In `MIRO_PROVIDER_MODE=miro`, API reads and writes require scoped bearer tokens. Board/template/run/audit lists and summary totals are restricted to the token workspace; execution and synchronization cannot cross workspace boundaries. Token issuers cannot grant scopes they lack or revoke another workspace's tokens. Demo mode retains anonymous demo reads and runs. Live credential revocation and OAuth device flow currently return HTTP 501 rather than claim successful production changes. Webhooks require a configured `MIRO_WEBHOOK_SECRET` in live mode and cannot override the authenticated workspace. This does not certify external Miro provider behavior or the unfinished PostgreSQL repository adapter.
+
+Live `/metrics` requires the separate operator-only bearer secret `MIRO_METRICS_TOKEN`; tenant dashboard tokens cannot access global request labels. Treat this secret as operator access and do not distribute it to tenants. Metric cardinality remains a separate operational concern.

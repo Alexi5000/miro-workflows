@@ -41,6 +41,11 @@ describe("live tenant authorization", () => {
     if (path === "/api/audit-events") expect(data.every((event: { workspaceId: string }) => event.workspaceId === "tenant-isolated")).toBe(true);
     else expect(data).toEqual([]);
   });
+  it("does not expose global metrics to tenant credentials", async () => {
+    const response = await call("/metrics");
+    expect(response.status).toBe(401);
+    expect(await response.text()).not.toContain("/api/runs/");
+  });
   it("scopes summary totals and lists", async () => {
     const body = await (await call("/api/summary")).json();
     expect(Object.values(body.totals)).toEqual([0, 0, 0, 0, 0, 0]);
