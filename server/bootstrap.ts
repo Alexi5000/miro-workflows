@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { existsSync, createReadStream } from "node:fs";
 import { extname, resolve } from "node:path";
@@ -189,27 +190,56 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
     }
 
     try {
-      if (path === "/api/health") {
-        return sendLogged(200, { status: "ok", mode: config.providerMode, databasePath: config.databasePath, timestamp: new Date().toISOString() });
+      let workspaceId: string | undefined;
+      if (config.providerMode === "miro" && path === "/metrics") {
+        const secret = process.env.MIRO_METRICS_TOKEN;
+        const supplied = request.headers.authorization?.replace(/^Bearer /, "") || "";
+        if (!secret || Buffer.byteLength(secret) !== Buffer.byteLength(supplied) || !timingSafeEqual(Buffer.from(secret), Buffer.from(supplied))) return sendLogged(401, { error: "Operator metrics token required." });
       }
-      if (path === "/api/summary") return sendLogged(200, repository.getSummary());
+      if (config.providerMode === "miro" && path.startsWith("/api/") && path !== "/api/health") {
+        const scope = path.startsWith("/api/runs") ? (isStateChange ? "runs:write" : "runs:read")
+          : path.startsWith("/api/credentials") || path.includes("/oauth/device-code") ? "credentials:write"
+          : path === "/api/webhooks/miro" ? "webhooks:write"
+          : path === "/api/audit-events" ? "audit:read"
+          : path === "/api/workspaces" ? "workspaces:read"
+          : isStateChange ? "dashboard:write" : "dashboard:read";
+        const auth = await requireScope(scope);
+        if (!auth) return;
+        workspaceId = auth.workspaceId;
+      }
+      const boards = () => repository.listBoards().filter((board) => !workspaceId || board.workspaceId === workspaceId);
+      const templates = () => repository.listTemplates().filter((template) => !workspaceId || repository.getBoard(template.defaultBoardId)?.workspaceId === workspaceId);
+      if (path === "/api/health") {
+        return sendLogged(200, { status: "ok", mode: config.providerMode, timestamp: new Date().toISOString() });
+      }
+      if (path === "/api/summary") {
+        const summary = repository.getSummary();
+        if (!workspaceId) return sendLogged(200, summary);
+        const runs = repository.listRuns(2147483647, workspaceId);
+        return sendLogged(200, { ...summary, boards: boards(), templates: templates(), recentRuns: runs.slice(0, 5), totals: {
+          workspaces: repository.listWorkspaces().filter((w) => w.id === workspaceId).length,
+          boards: boards().length, templates: templates().length, runs: runs.length,
+          completedRuns: runs.filter((run) => run.status === "completed").length,
+          createdItems: runs.reduce((count, run) => count + repository.listBoardItems(run.id).length, 0),
+        } });
+      }
       if (path === "/api/workspaces")
-        return sendLogged(200, { data: repository.listWorkspaces(), credentials: repository.listCredentials() });
-      if (path === "/api/boards") return sendLogged(200, { data: repository.listBoards() });
-      if (path === "/api/templates") return sendLogged(200, { data: repository.listTemplates() });
+        return sendLogged(200, { data: repository.listWorkspaces().filter((w) => !workspaceId || w.id === workspaceId), credentials: workspaceId ? (hasScope(ctx.auth, "credentials:read") ? repository.listCredentialsByWorkspace(workspaceId) : []) : repository.listCredentials() });
+      if (path === "/api/boards") return sendLogged(200, { data: boards() });
+      if (path === "/api/templates") return sendLogged(200, { data: templates() });
       if (path.startsWith("/api/templates/")) {
-        const template = repository.getTemplateBySlug(decodeURIComponent(path.split("/").pop() || ""));
+        const template = templates().find((t) => t.slug === decodeURIComponent(path.split("/").pop() || ""));
         return sendLogged(template ? 200 : 404, template || { error: "Template not found" });
       }
       if (path === "/api/runs" && request.method === "GET") {
         const q = parseOrSend400(listRunsQueryContractV1, Object.fromEntries(url.searchParams), "GET /api/runs");
         if (!q) return;
-        return sendLogged(200, { data: repository.listRuns(q.limit) });
+        return sendLogged(200, { data: repository.listRuns(q.limit, workspaceId) });
       }
       if (path === "/api/runs" && request.method === "POST") {
         const body = parseOrSend400(startRunContractV1, parseBody(await readBody(request, maxBodyBytes)), "POST /api/runs");
         if (!body) return;
-        const started = await startWorkflowRun(body);
+        const started = await startWorkflowRun(body, workspaceId);
         if (!started) {
           return sendLogged(500, { error: "Workflow run did not produce a record." });
         }
@@ -218,21 +248,22 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
       }
       if (path.startsWith("/api/runs/")) {
         const run = repository.getRun(decodeURIComponent(path.split("/").pop() || ""));
-        return sendLogged(run ? 200 : 404, run || { error: "Run not found" });
+        if (!run || (workspaceId && run.board.workspaceId !== workspaceId)) return sendLogged(404, { error: "Run not found" });
+        return sendLogged(200, run);
       }
       if (path === "/api/audit-events") {
         const q = parseOrSend400(listAuditQueryContractV1, Object.fromEntries(url.searchParams), "GET /api/audit-events");
         if (!q) return;
-        return sendLogged(200, { data: repository.listAuditEvents({ limit: q.limit }) });
+        return sendLogged(200, { data: repository.listAuditEvents({ limit: q.limit, workspaceId }) });
       }
       if (path === "/api/sync/boards" && request.method === "POST")
-        return sendLogged(200, { data: await syncBoards() });
+        return sendLogged(200, { data: await syncBoards(workspaceId) });
 
       if (path.startsWith("/api/boards/") && path.endsWith("/items") && request.method === "GET") {
         const boardId = decodeURIComponent(path.split("/")[3] || "");
         const board = repository.getBoard(boardId);
-        if (!board) return sendLogged(404, { error: "Board not found" });
-        const allRuns = repository.listRuns(50);
+        if (!board || (workspaceId && board.workspaceId !== workspaceId)) return sendLogged(404, { error: "Board not found" });
+        const allRuns = repository.listRuns(50, workspaceId);
         const matching = allRuns.filter((r) => r.boardId === boardId);
         const items = matching.flatMap((r) => repository.listBoardItems(r.id));
         return sendLogged(200, { data: items, board });
@@ -270,10 +301,12 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
         return sendLogged(201, { credential: record, deviceFlow: null });
       }
       if (path.startsWith("/api/credentials/") && request.method === "DELETE") {
-        // Demo: we keep audit-only metadata; deletion is a no-op + audit row.
+        const auth = await requireScope("credentials:write");
+        if (!auth) return;
+        if (config.providerMode === "miro") return sendLogged(501, { error: "Live credential revocation is not implemented." });
         const id = decodeURIComponent(path.split("/").pop() || "");
         await repository.createAuditEvent({
-          workspaceId: repository.listWorkspaces()[0]?.id || "ws-demo",
+          workspaceId: auth.workspaceId,
           runId: null,
           eventType: "credential.revoked",
           severity: "warning",
@@ -291,6 +324,8 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
         const pathParams = parseOrSend400(workspaceIdPathContractV1, { workspaceId: decodeURIComponent(pathMatch[1]) }, "POST /api/workspaces/:id/oauth/device-code");
         if (!pathParams) return;
         const workspaceId = pathParams.workspaceId;
+        if (workspaceId !== auth.workspaceId) return sendLogged(403, { error: "Workspace access denied." });
+        if (config.providerMode === "miro") return sendLogged(501, { error: "Live OAuth device flow is not implemented." });
         // OAuth device flow stub: in production this is a remote call to
         // Miro's `/oauth/device/code` endpoint. In demo mode we return a
         // plausible shape so the UI can show the user-code / verification URI.
@@ -321,6 +356,7 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
         if (body.workspaceId !== auth.workspaceId) {
           return sendLogged(403, { error: "Cannot issue tokens for a different workspace." });
         }
+        if (body.scopes.some((scope) => !hasScope(ctx.auth, scope))) return sendLogged(403, { error: "Cannot grant scopes absent from the issuing token." });
         const issued = await issueToken(body);
         return sendLogged(201, {
           id: issued.id,
@@ -341,6 +377,7 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
         const auth = await requireScope("dashboard:write");
         if (!auth) return;
         const id = decodeURIComponent(path.split("/").pop() || "");
+        if (!(await listWorkspaceTokens(auth.workspaceId)).some((token) => token.id === id)) return sendLogged(404, { error: "Token not found." });
         await revokeToken(id);
         await repository.createAuditEvent({
           workspaceId: auth.workspaceId,
@@ -366,9 +403,11 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
           return sendLogged(500, { error: "Internal server error" });
         }
         const sig = request.headers["x-miro-signature"]?.toString() || "";
-        const expected = require("node:crypto").createHmac("sha256", process.env.MIRO_WEBHOOK_SECRET || "dev-webhook-secret")
+        const secret = process.env.MIRO_WEBHOOK_SECRET || (config.providerMode === "demo" ? "dev-webhook-secret" : "");
+        if (!secret) return sendLogged(503, { error: "Webhook secret is not configured." });
+        const expected = createHmac("sha256", secret)
           .update(body).digest("hex");
-        if (!sig || sig !== expected) {
+        if (Buffer.byteLength(sig) !== Buffer.byteLength(expected) || !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
           return sendLogged(401, { error: "Invalid webhook signature." });
         }
         // v1.1: replay protection — the signature must be fresh within the
@@ -380,6 +419,7 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
         try { payload = JSON.parse(body); } catch { return sendLogged(400, { error: "Invalid JSON." }); }
         const externalId = String((payload as { id?: unknown }).id ?? `${Date.now()}-${Math.random()}`);
         const workspaceId = String((payload as { workspaceId?: unknown }).workspaceId ?? auth.workspaceId);
+        if (workspaceId !== auth.workspaceId) return sendLogged(403, { error: "Workspace access denied." });
         const result = await repository.recordWebhookDelivery({ source: "miro", externalId, workspaceId, payload });
         await repository.createAuditEvent({
           workspaceId,

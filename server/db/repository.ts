@@ -51,7 +51,7 @@ export interface Repository {
 
   // Runs
   createRun(input: { templateId: string; boardId: string; status: WorkflowRun["status"]; triggeredBy: string; summary: string; metrics: WorkflowRunMetrics; startedAt?: string; finishedAt?: string | null }): Promise<RunDetail>;
-  listRuns(limit?: number): WorkflowRun[];
+  listRuns(limit?: number, workspaceId?: string): WorkflowRun[];
   getRun(runId: string): RunDetail | null;
 
   // Board items
