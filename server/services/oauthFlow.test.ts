@@ -22,7 +22,7 @@ describe("OAuth device-flow round-trip (demo)", () => {
     const wsId = seedWorkspaces[0].id;
     const start = await startOAuthDeviceFlow({ workspaceId: wsId });
     expect(start.userCode).toBe("DEMO-CODE");
-    expect(start.verificationUri).toMatch(/miro\.com/);
+    expect(new URL(start.verificationUri).origin).toBe("https://miro.com");
 
     const polled = await pollOAuthDeviceFlow(start.flowId);
     expect(polled.status).toBe("ok");
