@@ -323,7 +323,7 @@ Full results + the "what we did NOT measure" list are in [`docs/BENCHMARK.md`](.
 | [docs/OAUTH.md](./docs/OAUTH.md) | OAuth device-flow status (currently demo stub) |
 | [docs/SKILLS.md](./docs/SKILLS.md) | Authoring-time skills |
 | [docs/TESTING.md](./docs/TESTING.md) | Coverage policy |
-| [docs/openapi.json](./docs/openapi.json) | Generated OpenAPI 3.1 spec (run `pnpm run openapi:build`) |
+| [OpenAPI generator](./scripts/generate_openapi.ts) | Run `pnpm run openapi:build` to create the local `docs/openapi.json` specification. |
 | [docs/adr/](./docs/adr/) | Architecture Decision Records (10 ADRs) |
 | [.agents/skills/](./.agents/skills/) | miro-board-design · mcp-tool-authoring · fde-pillar-review |
 
