@@ -18,20 +18,20 @@
 [![MCP](https://img.shields.io/badge/MCP-20%20tools-8D52FF)](https://modelcontextprotocol.io)
 [![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Tests: 116 / 116](https://img.shields.io/badge/tests-116%2F116-success)](./ROADMAP.md)
+[![Tests: 175 / 175](https://img.shields.io/badge/tests-175%2F175-success)](./docs/TESTING.md)
 [![12 / 12 FDE pillars](https://img.shields.io/badge/12%2F12%20FDE-success)](./docs/ARCHITECTURE.md)
 
 **Production-grade Miro command center: React dashboard, Node API, custom MCP server,
 typed contracts, three-agent planning harness, OAuth device flow, Prometheus metrics, and a
-full Docker stack — all in one FDE-grade repo.**
+full Docker stack, all in one FDE-grade repo.**
 
 </div>
 
 ---
 
-## ✨ What it does
+## Why this exists
 
-Miro Workflows turns visual collaboration into **repeatable operations** for product,
+**What it does.** Miro Workflows turns visual collaboration into **repeatable operations** for product,
 engineering, and ops teams. It gives you:
 
 - A **React dashboard** (`/dashboard`, `/workspaces`, `/boards`, `/boards/:id`, `/credentials`)
@@ -44,10 +44,43 @@ engineering, and ops teams. It gives you:
   `FakeMiroApiClient` for offline development.
 - A **three-agent planning harness** (Planner → Generator → Evaluator) with a
   four-axis grader and a composable plateau detector, fully model-agnostic.
-- **Typed, versioned contracts** (`shared/contracts/`) — zod, JSON-Schema
+- **Typed, versioned contracts** (`shared/contracts/`): zod, JSON-Schema
   artifacts, OpenAPI 3.1, all generated from the same source.
 - **Reproducible bench** with honest "what we DID NOT measure" disclosures.
 - **Three multi-stage Dockerfiles** + `docker-compose.yml` that builds and runs cleanly.
+
+**Who it serves.** Operations and platform engineers who run Miro boards as a system of record for
+sprint and audit workflows, and MCP clients (Claude, Codex, Cursor) that need a typed,
+rate-limit-aware tool surface over Miro REST v2 instead of raw HTTP calls.
+
+**Why Alex built it.** The repository started on 2026-01-14 as a Miro MCP integration
+(`438ebd1`: "chore: initial project setup with Miro MCP integration") and the next day gained a
+custom server (`ebdb999`, 2026-01-15: "feat(mcp): add custom miro mcp server with full api
+control", whose body reads "Implement 9 custom tools for granular board control" and "Enable
+precise positioning and custom styling"). The 2026-07-05 to 2026-07-07 sprint turned it into
+the full-stack application and recorded the reasoning in ADRs: ADR-0001 (2026-07-05) requires
+that contributors, CI, and demo deployments "must boot without an external Miro account or
+token"; ADR-0004 (2026-07-05) keeps the MCP server separate from the HTTP API because they have
+"different transports and audiences"; ADR-0007 (2026-07-06) adds the bearer auth wall before
+any production launch. The author is Alex Cinovoj, Founder & CTO of TechTide AI (`package.json`
+author "TechTide"; LICENSE copyright 2026 TechTide (Alexi5000)).
+
+**Real-world use case (2025–2026 evidence).** **Proposed use case.** An operations lead keeps one
+sprint-planning board per team and wants an agent to create the board, populate its columns, and
+log an audit event for every change. With `MIRO_PROVIDER_MODE=miro` and a scoped bearer token, an
+MCP client calls `create_board` and `batch_create_items` over stdio while the dashboard shows the
+run and its audit trail. The demo-mode path of that flow is exercised in CI by `tests/api.test.ts`,
+`tests/e2e/stack.test.tsx`, and the `miro-custom-mcp` suite against `FakeMiroApiClient`; no live
+Miro run is recorded in this repository, so the scenario is labelled proposed. The surrounding
+ecosystem supports it: Miro documents its own MCP server for the same board operations
+(page updated 2026-10-08)[^1], the Model Context Protocol revision of 2025-11-25 defines the tools
+interface this server implements[^2], the suites run on Vitest 4 (released 2025-10-22)[^3], and
+the containers run on Node.js 24 (released 2025-05-06)[^4].
+
+[^1]: Miro Developer Platform, "Miro's MCP Server". https://developers.miro.com/docs/miro-mcp (updated 2026-10-08).
+[^2]: Model Context Protocol specification, revision 2025-11-25. https://modelcontextprotocol.io/specification/2025-11-25 (published 2025-11-25).
+[^3]: Vitest team, "Vitest 4.0 is out!". https://vitest.dev/blog/vitest-4 (published 2025-10-22).
+[^4]: Node.js project, "Node.js 24.0.0 (Current)". https://nodejs.org/en/blog/release/v24.0.0 (published 2025-05-06).
 
 ![Capability badges](assets/readme/capability-badges.svg)
 
@@ -175,7 +208,7 @@ flowchart LR
 - **`Evaluator`** scores each axis in `[0, 1]` (`correctness` / `safety` / `completeness` / `quality`).
 - **`withPlateauDetection(scorer, opts)`** wraps any scorer with sliding-window
   plateau detection (epsilon / regression / converged).
-- **Model-agnostic.** Any `(messages) => Promise<string>` works — stub it for CI,
+- **Model-agnostic.** Any `(messages) => Promise<string>` works: stub it for CI,
   point it at Claude or codex in production.
 
 Demo invocation:
@@ -199,7 +232,7 @@ pnpm run dev:web     # http://localhost:5173
 ```
 
 The dashboard is at <http://localhost:5173>; the API at <http://localhost:8787>; `/api/health`,
-`/api/summary`, `/metrics` are open. Every write endpoint requires a bearer token —
+`/api/summary`, `/metrics` are open. Every write endpoint requires a bearer token;
 issue one via `POST /api/auth/tokens` (see [SECURITY.md](./SECURITY.md)).
 
 ### Live Miro (optional)
@@ -253,16 +286,16 @@ Full results + the "what we did NOT measure" list are in [`docs/BENCHMARK.md`](.
 
 ---
 
-## 🧪 Tests — 116 green
+## 🧪 Tests: 175 green
 
 | Suite | Count | Runner |
 | --- | ---: | --- |
-| Root (server, contracts, agents, scripts) | 69 | `vitest` |
+| Root (server, contracts, agents, scripts) | 128 | `vitest` |
 | UI + full-stack e2e (jsdom) | 13 | `vitest` + `@testing-library/react` |
 | MCP package | 34 | `vitest` |
-| **Total** | **116** | |
+| **Total** | **175** | |
 
-`pnpm run ci` runs them all in CI (`.github/workflows/ci.yml`).
+`pnpm run ci` runs them all in CI (`.github/workflows/ci.yml`). Counts measured 2026-10-21 with `pnpm test`, `pnpm run test:ui`, and `pnpm run mcp:test`.
 
 ---
 
@@ -303,7 +336,7 @@ Full results + the "what we did NOT measure" list are in [`docs/BENCHMARK.md`](.
 ├── SECURITY.md         Vulnerability disclosure + hardening status
 ├── docker-compose.yml   web + api + mcp
 ├── Dockerfile.{web,api,mcp}
-└── package.json         pnpm 10.11.1, Node 20+
+└── package.json         pnpm 10.11.1, Node 24 (.nvmrc)
 ```
 
 ---
@@ -341,7 +374,22 @@ See [SECURITY.md](./SECURITY.md). The foundation ships with:
 - Token storage: HMAC digest + 8-char prefix, never plaintext.
 - Structured access log with `requestId` correlation.
 
-> Reporting: `security@<your-domain>` (private key in `SECURITY.md`).
+> Reporting: use the email channel described in [SECURITY.md](./SECURITY.md); no PGP key is published yet.
+
+### Optional CSRF enforcement
+
+The API uses bearer authentication by default. Set `MIRO_CSRF_SECRET` to enable
+CSRF enforcement for every POST, PUT, PATCH and DELETE request, regardless of
+whether a caller sends cookies. Clients must supply `x-miro-csrf-token` containing
+the hex HMAC-SHA256 of `miro_csrf` under that secret. This includes webhook callers
+when enforcement is enabled. No public fallback secret is used. Configure the
+secret before starting the server; read-only requests remain unaffected.
+
+### Live workspace authorization
+
+In `MIRO_PROVIDER_MODE=miro`, API reads and writes require scoped bearer tokens. Board/template/run/audit lists and summary totals are restricted to the token workspace; execution and synchronization cannot cross workspace boundaries. Token issuers cannot grant scopes they lack or revoke another workspace's tokens. Demo mode retains anonymous demo reads and runs. Live credential revocation and OAuth device flow currently return HTTP 501 rather than claim successful production changes. Webhooks require a configured `MIRO_WEBHOOK_SECRET` in live mode and cannot override the authenticated workspace. This does not certify external Miro provider behavior or the unfinished PostgreSQL repository adapter.
+
+Live `/metrics` requires the separate operator-only bearer secret `MIRO_METRICS_TOKEN`; tenant dashboard tokens cannot access global request labels. Treat this secret as operator access and do not distribute it to tenants. Metric cardinality remains a separate operational concern.
 
 ---
 
@@ -349,7 +397,7 @@ See [SECURITY.md](./SECURITY.md). The foundation ships with:
 
 | Surface | Status |
 | --- | --- |
-| Tests | **116/116 green** (root 69, UI 13, MCP 34) |
+| Tests | **175/175 green** (root 128, UI 13, MCP 34) |
 | Typecheck | 0 errors |
 | Coverage thresholds | lines 80 / branches 65 / fns 80 / stmts 80 |
 | Dockerfiles | `web`, `api`, `mcp` all build OK |
@@ -367,20 +415,5 @@ See [SECURITY.md](./SECURITY.md). The foundation ships with:
 
 ## 📜 License
 
-[MIT](./LICENSE) — © 2026 TechTide. See [SECURITY.md](./SECURITY.md) for vulnerability
+[MIT](./LICENSE), © 2026 TechTide (Alexi5000). See [SECURITY.md](./SECURITY.md) for vulnerability
 disclosure.
-
-### Optional CSRF enforcement
-
-The API uses bearer authentication by default. Set `MIRO_CSRF_SECRET` to enable
-CSRF enforcement for every POST, PUT, PATCH and DELETE request, regardless of
-whether a caller sends cookies. Clients must supply `x-miro-csrf-token` containing
-the hex HMAC-SHA256 of `miro_csrf` under that secret. This includes webhook callers
-when enforcement is enabled. No public fallback secret is used. Configure the
-secret before starting the server; read-only requests remain unaffected.
-
-### Live workspace authorization
-
-In `MIRO_PROVIDER_MODE=miro`, API reads and writes require scoped bearer tokens. Board/template/run/audit lists and summary totals are restricted to the token workspace; execution and synchronization cannot cross workspace boundaries. Token issuers cannot grant scopes they lack or revoke another workspace's tokens. Demo mode retains anonymous demo reads and runs. Live credential revocation and OAuth device flow currently return HTTP 501 rather than claim successful production changes. Webhooks require a configured `MIRO_WEBHOOK_SECRET` in live mode and cannot override the authenticated workspace. This does not certify external Miro provider behavior or the unfinished PostgreSQL repository adapter.
-
-Live `/metrics` requires the separate operator-only bearer secret `MIRO_METRICS_TOKEN`; tenant dashboard tokens cannot access global request labels. Treat this secret as operator access and do not distribute it to tenants. Metric cardinality remains a separate operational concern.
