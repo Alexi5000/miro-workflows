@@ -182,7 +182,7 @@ function buildHandler(corsOrigin: string, maxBodyBytes: number) {
       try {
         return parseOrThrow(schema, raw, routeName);
       } catch (err) {
-        const issues = (err as Error & { issues?: unknown }).issues ?? String(err);
+        const issues = (err as Error & { issues?: unknown }).issues ?? [];
         sendLogged(400, { error: `Invalid request: ${routeName}`, issues });
         return null;
       }

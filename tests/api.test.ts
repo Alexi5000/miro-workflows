@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
+import * as contracts from "../shared/contracts/index.js";
 import { createServer, type Server } from "node:http";
 import { AddressInfo } from "node:net";
 import { repository } from "../server/db/database.js";
@@ -72,6 +73,23 @@ describe("HTTP API", () => {
     expect(body.id).toMatch(/^run-/);
   });
 
+  it("does not expose unexpected validation exception details", async () => {
+    const validator = vi.spyOn(contracts, "parseOrThrow").mockImplementationOnce(() => {
+      throw new Error("private-validator-path-and-secret");
+    });
+    try {
+      const res = await fetch(`${baseUrl}/api/runs`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "Invalid request: POST /api/runs", issues: [] });
+    } finally {
+      validator.mockRestore();
+    }
+  });
+
   it("POST /api/runs with invalid payload returns 400", async () => {
     const res = await fetch(`${baseUrl}/api/runs`, {
       method: "POST",
@@ -81,6 +99,7 @@ describe("HTTP API", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toMatch(/Invalid request: POST \/api\/runs/i);
+    expect(body.issues).toEqual(expect.arrayContaining([expect.objectContaining({ path: "templateSlug", message: expect.any(String) })]));
   });
 
   it.each(["private-request-marker", '{"secret":"private-request-marker"'])
