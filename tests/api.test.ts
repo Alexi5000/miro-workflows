@@ -83,6 +83,17 @@ describe("HTTP API", () => {
     expect(body.error).toMatch(/Invalid request: POST \/api\/runs/i);
   });
 
+  it.each(["private-request-marker", '{"secret":"private-request-marker"'])
+  ("rejects malformed JSON without exposing parser details: %s", async (payload) => {
+    const res = await fetch(`${baseUrl}/api/runs`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: payload,
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Invalid JSON body" });
+  });
+
   it("POST /api/sync/boards returns one result per board", async () => {
     const res = await fetch(`${baseUrl}/api/sync/boards`, { method: "POST" });
     expect(res.status).toBe(200);

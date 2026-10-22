@@ -68,9 +68,8 @@ function parseBody(raw: string): unknown {
   if (raw === "") return {};
   try {
     return JSON.parse(raw);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new ResponseError(400, `Invalid JSON body — ${msg.slice(0, 200)}`);
+  } catch {
+    throw new ResponseError(400, "Invalid JSON body");
   }
 }
 
