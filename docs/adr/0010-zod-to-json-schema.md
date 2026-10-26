@@ -1,6 +1,6 @@
 # ADR-0010: Drop hand-rolled JSON-Schema emitter for `zod-to-json-schema`
 
-- Status: Accepted
+- Status: Accepted (emitter superseded 2026-10-26, see Update)
 - Date: 2026-07-06
 
 ## Context
@@ -50,3 +50,13 @@ have them.
   OpenAPI generator is small and stable.
 - **Keep the hand-rolled emitter + write more tests**: rejected — the
   test coverage cannot compensate for a fundamentally fragile approach.
+
+## Update (2026-10-26): Zod 4 native emitter
+
+Zod 3 is affected by GHSA-mrhx-c7xc-m3w5 and has no patched 3.x release,
+so the root package moved to `zod@^4.6.7` (miro-custom-mcp was already on
+Zod 4). `zod-to-json-schema` does not understand Zod 4 schemas (it emits
+empty objects), so `envelope()` now calls Zod 4's built-in
+`z.toJSONSchema(schema, { target: "draft-7", io: "input" })` and the
+dependency was removed. `io: "input"` keeps `.default()` fields out of
+`required`, as before. The envelope, builders and tests are unchanged.

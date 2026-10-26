@@ -87,19 +87,19 @@ export type RunResultContractV1 = z.infer<typeof runResultContractV1>;
 
 export interface ContractDescriptor<TInput, TOutput> {
   version: string;
-  schema: z.ZodType<TOutput, z.ZodTypeDef, TInput>;
+  schema: z.ZodType<TOutput, TInput>;
 }
 
 export const SPRINT_CONTRACTS: Record<string, ContractDescriptor<unknown, SprintContractV1>> = {
-  "1.0.0": { version: "1.0.0", schema: sprintContractV1 as unknown as z.ZodType<SprintContractV1, z.ZodTypeDef, unknown> },
+  "1.0.0": { version: "1.0.0", schema: sprintContractV1 as unknown as z.ZodType<SprintContractV1, unknown> },
 };
 
 export const AUDIT_CONTRACTS: Record<string, ContractDescriptor<unknown, AuditEventContractV1>> = {
-  "1.0.0": { version: "1.0.0", schema: auditEventContractV1 as unknown as z.ZodType<AuditEventContractV1, z.ZodTypeDef, unknown> },
+  "1.0.0": { version: "1.0.0", schema: auditEventContractV1 as unknown as z.ZodType<AuditEventContractV1, unknown> },
 };
 
 export const RUN_RESULT_CONTRACTS: Record<string, ContractDescriptor<unknown, RunResultContractV1>> = {
-  "1.0.0": { version: "1.0.0", schema: runResultContractV1 as unknown as z.ZodType<RunResultContractV1, z.ZodTypeDef, unknown> },
+  "1.0.0": { version: "1.0.0", schema: runResultContractV1 as unknown as z.ZodType<RunResultContractV1, unknown> },
 };
 
 export {

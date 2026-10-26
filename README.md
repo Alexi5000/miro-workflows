@@ -323,7 +323,7 @@ Full results + the "what we did NOT measure" list are in [`docs/BENCHMARK.md`](.
 │   ├── db/              sql.js + schema.sql + repository
 │   ├── services/        workflowService, authService (HMAC-SHA256 bearer tokens)
 │   └── metrics.ts       Prometheus counters and histograms
-├── shared/contracts/     Versioned zod schemas + zod-to-json-schema builders + re-exports
+├── shared/contracts/     Versioned zod schemas + JSON-Schema builders (z.toJSONSchema) + re-exports
 ├── src/                 React 18 + Vite + hash router + AuthProvider + ErrorBoundary
 ├── tests/
 │   ├── api.test.ts      HTTP API integration

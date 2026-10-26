@@ -9,17 +9,23 @@
   ],
   "properties": {
     "templateSlug": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
     "boardId": {
       "type": "string"
     },
     "triggeredBy": {
-      "type": "string"
+      "default": "local-user",
+      "type": "string",
+      "minLength": 1
     },
     "parameters": {
       "type": "object",
-      "additionalProperties": true
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {}
     }
   }
 }

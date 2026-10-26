@@ -1,11 +1,12 @@
 /**
- * shared/contracts/json-schema.ts — JSON-Schema emitter via `zod-to-json-schema`.
+ * shared/contracts/json-schema.ts — JSON-Schema emitter via Zod 4's native
+ * `z.toJSONSchema`.
  *
- * The previous hand-rolled emitter was removed; we now use the well-tested
- * upstream package and add our own envelope (id, title, additionalProperties).
+ * `io: "input"` describes what callers may send: fields with a `.default()`
+ * stay optional, matching the previous zod-to-json-schema output. We add our
+ * own envelope (id, title, additionalProperties).
  */
-import { zodToJsonSchema } from "zod-to-json-schema";
-import type { ZodTypeAny } from "zod";
+import { z } from "zod";
 import {
   SPRINT_CONTRACT_VERSION,
   AUDIT_CONTRACT_VERSION,
@@ -32,8 +33,8 @@ export interface JsonSchema {
   properties: Record<string, unknown>;
 }
 
-function envelope<S extends ZodTypeAny>(schema: S, id: string, title: string): JsonSchema {
-  const inner = zodToJsonSchema(schema, { target: "jsonSchema7" }) as Record<string, unknown>;
+function envelope<S extends z.ZodType>(schema: S, id: string, title: string): JsonSchema {
+  const inner = z.toJSONSchema(schema, { target: "draft-7", io: "input" }) as Record<string, unknown>;
   const required = typeof inner.required === "string" ? [inner.required] : Array.isArray(inner.required) ? (inner.required as string[]) : undefined;
   return {
     $schema: "https://json-schema.org/draft/2020-12/schema",

@@ -8,7 +8,7 @@ import {
   buildIssueTokenJsonSchema,
 } from "./json-schema.js";
 
-describe("JSON-Schema emitter (zod-to-json-schema)", () => {
+describe("JSON-Schema emitter (z.toJSONSchema)", () => {
   it("sprint schema: draft-2020-12, required templateSlug", () => {
     const s = buildSprintJsonSchema();
     expect(s.$schema).toMatch(/draft\/2020-12/);
