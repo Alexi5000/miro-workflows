@@ -55,7 +55,7 @@
   "author": "TechTide",
   "license": "MIT",
   "dependencies": {
-    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/api": "^1.10.0",
     "@vitejs/plugin-react": "latest",
     "lucide-react": "latest",
     "pg": "^8.23.1",
