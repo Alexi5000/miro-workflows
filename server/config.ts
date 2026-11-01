@@ -39,3 +39,18 @@ export function getConfig(): AppConfig {
     corsOrigin: process.env.CORS_ORIGIN || "*",
   };
 }
+
+/** Pre-rename OAuth variable names and their current replacements. */
+const LEGACY_OAUTH_ENV: ReadonlyArray<[legacy: string, current: string]> = [
+  ["MIRO_CLIENT_ID", "MIRO_OAUTH_CLIENT_ID"],
+  ["MIRO_CLIENT_SECRET", "MIRO_OAUTH_CLIENT_SECRET"],
+];
+
+/** Warnings for legacy OAuth env names that are set while the name the
+ *  server actually reads is not. Without the current name, the server falls
+ *  back to the demo OAuth client, so surface it at startup. */
+export function legacyOAuthEnvWarnings(env: NodeJS.ProcessEnv = process.env): string[] {
+  return LEGACY_OAUTH_ENV
+    .filter(([legacy, current]) => env[legacy] && !env[current])
+    .map(([legacy, current]) => `${legacy} is set but ignored; rename it to ${current}.`);
+}
