@@ -2,6 +2,7 @@ version: 2
 updates:
   - package-ecosystem: "npm"
     directory: "/"
+    open-pull-requests-limit: 0
     schedule:
       interval: "weekly"
       day: "tuesday"
@@ -11,6 +12,7 @@ updates:
       - "dependencies"
   - package-ecosystem: "npm"
     directory: "/miro-custom-mcp/"
+    open-pull-requests-limit: 0
     schedule:
       interval: "weekly"
       day: "tuesday"
@@ -20,6 +22,7 @@ updates:
       - "dependencies"
   - package-ecosystem: "github-actions"
     directory: "/.github/"
+    open-pull-requests-limit: 0
     schedule:
       interval: "monthly"
     commit-message:
@@ -28,6 +31,7 @@ updates:
       - "ci"
   - package-ecosystem: "docker"
     directory: "/"
+    open-pull-requests-limit: 0
     schedule:
       interval: "monthly"
     commit-message:
