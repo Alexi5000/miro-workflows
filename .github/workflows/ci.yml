@@ -34,6 +34,9 @@ jobs:
           node-version-file: ".nvmrc"
           cache: pnpm
 
+      - name: Reject floating dependency specifiers
+        run: "! grep -nE '\"(latest|\\*)\"' package.json miro-custom-mcp/package.json"
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
