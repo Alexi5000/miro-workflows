@@ -12,6 +12,8 @@ delete process.env.MIRO_ACCESS_TOKEN;
 delete process.env.MIRO_PROVIDER_MODE;
 delete process.env.MIRO_CLIENT_ID;
 delete process.env.MIRO_CLIENT_SECRET;
+delete process.env.MIRO_OAUTH_CLIENT_ID;
+delete process.env.MIRO_OAUTH_CLIENT_SECRET;
 
 process.env.PORT = "0"; // ephemeral
 process.env.DATABASE_URL = `sqlite://${join(tmpdir(), `miro-test-${process.pid}-${Date.now()}.sqlite`)}`;

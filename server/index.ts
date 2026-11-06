@@ -1,7 +1,8 @@
 import { startServer } from "./bootstrap.js";
-import { getConfig } from "./config.js";
+import { getConfig, legacyOAuthEnvWarnings } from "./config.js";
 
 const config = getConfig();
+for (const warning of legacyOAuthEnvWarnings()) console.warn(`[config] ${warning}`);
 
 startServer({ port: config.port, corsOrigin: config.corsOrigin }).then((server) => {
   const address = server.address();

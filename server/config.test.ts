@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getConfig } from "./config.js";
+import { getConfig, legacyOAuthEnvWarnings } from "./config.js";
 
 let TMP_ROOT = "";
 
@@ -55,5 +55,20 @@ describe("config", () => {
   it("MIRO_ACCESS_TOKEN alone switches provider to miro", () => {
     process.env.MIRO_ACCESS_TOKEN = "tok";
     expect(getConfig().providerMode).toBe("miro");
+  });
+});
+
+describe("legacyOAuthEnvWarnings", () => {
+  it("warns when only the legacy MIRO_CLIENT_* names are set", () => {
+    const warnings = legacyOAuthEnvWarnings({ MIRO_CLIENT_ID: "id", MIRO_CLIENT_SECRET: "secret" });
+    expect(warnings).toEqual([
+      "MIRO_CLIENT_ID is set but ignored; rename it to MIRO_OAUTH_CLIENT_ID.",
+      "MIRO_CLIENT_SECRET is set but ignored; rename it to MIRO_OAUTH_CLIENT_SECRET.",
+    ]);
+  });
+
+  it("is silent when the MIRO_OAUTH_* names are set", () => {
+    expect(legacyOAuthEnvWarnings({ MIRO_CLIENT_ID: "id", MIRO_OAUTH_CLIENT_ID: "id" })).toEqual([]);
+    expect(legacyOAuthEnvWarnings({})).toEqual([]);
   });
 });

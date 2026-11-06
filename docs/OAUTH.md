@@ -31,7 +31,7 @@ We deferred items 1–3 because they require a registered Miro OAuth app per ins
 ## What needs to change for live mode
 
 1. Register a Miro OAuth app in the developer console; capture `client_id`, `client_secret`, `redirect_uri`.
-2. Set `MIRO_CLIENT_ID`, `MIRO_CLIENT_SECRET`, `MIRO_REDIRECT_URL` in `.env`.
+2. Set `MIRO_OAUTH_CLIENT_ID`, `MIRO_OAUTH_CLIENT_SECRET` and `MIRO_TOKEN_ENCRYPTION_KEY` (`openssl rand -base64 32`) in `.env`. Optional: `MIRO_OAUTH_BASE_URL` (default `https://api.miro.com/v1`); `MIRO_OAUTH_DEMO=1` forces the demo client. With `MIRO_OAUTH_CLIENT_ID` unset the server uses the demo client. The device flow has no redirect URL, so no redirect variable is read.
 3. Replace the stub in `server/bootstrap.ts` with a real `fetch("https://api.miro.com/v1/oauth/device/code", …)` call.
 4. Add a polling endpoint `POST /api/credentials/complete-device-flow` that POSTs the user code to `/v1/oauth/token` and stores the refresh token.
 5. Refresh the token automatically before `expiresAt`.
